@@ -1,2 +1,0 @@
-C:\Users\lewolows\Projects\GRK\Debug\grk.exe
-C:\Users\lewolows\Projects\GRK\Debug\grk.pdb
