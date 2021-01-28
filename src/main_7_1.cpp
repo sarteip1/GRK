@@ -70,7 +70,7 @@ void mouse(int x, int y)
 
 	x_pos_cor = x - lastX;
 	y_pos_cor = lastY - y;
-	lastX = x;x_pos_cor
+	lastX = x;
 	lastY = y;
 }
 
