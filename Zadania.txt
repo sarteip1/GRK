@@ -1,0 +1,59 @@
+0. Do tej pory nasze obiekty znajdowa³y siê g³ównie w p³aszczyŸnie X-Z, w której porusza³ i obraca³ siê statek
+ (i kamera). Teraz nie bêdziemy siê ju¿ ograniczaæ do ruchu na p³aszczyŸnie. Planety bêd¹ znajdowaæ siê w dowolnych 
+miejscach trójwymiarowej przestrzeni. Aby wygodnie poruszaæ siê w trzech wymiarach, stworzymy ruch kamery oparty na
+ kwaternionach.
+
+1. Wyœwietl wiêksz¹ liczbê planet (np. 10) w przestrzeni trójwymiarowej (tak, aby nie znajdowa³y siê tylko w 
+p³aszczyŸnie). Mo¿esz wylosowaæ w funkcji init() pozycje planet (u¿ywaj¹c np. funkcji vec3 glm::ballRand(float R),
+ która zwraca losowy wektor w kuli o promieniu R), zapisaæ je w tablicy lub w std::vector i  w funkcji renderScene()
+ umieœciæ pêtlê iteruj¹c¹ po tablicy, w której wywo³ywane bêdzie rysowanie planety o zadanej pozycji.
+ 
+2. Chcemy stworzyæ kamerê, w której ruch mysz¹ góra-dó³ spowoduje obrót kamery wokó³ lokalnej osi X, a ruch
+ lewo-prawo - obrót kamery wokó³ lokalnej osi Y. Nale¿y zacz¹æ od usuniêcia zawartoœci funkcji createCameraMatrix(),
+ któr¹ w tym zadaniu napiszemy od nowa.
+
+a) W g³ównym pliku C++ pojawi³a siê nowa funkcja void mouse(int x, int y), która jest wywo³ywana przy ka¿dej zmianie
+ pozycji kursora w oknie. Stwórz zmienn¹ (lub zmienne) globalne, w której po zakoñczeniu funkcji mouse() bêdzie 
+znajdowaæ siê ró¿nica miêdzy poprzedni¹ a aktualn¹ pozycj¹ kursora (osobno wzglêdem osi X i Y ekranu). Ró¿nica ta 
+zostanie wykorzystana do kontrolowania obrotu kamery.
+
+b) W funkcji createCameraMatrix() oblicz kwaternion reprezentuj¹cy rotacjê spowodowan¹ przez ruch kursora miêdzy
+ poprzedni¹ a aktualn¹ klatk¹ animacji (zmienne z punktu 2a). Mo¿esz u¿yæ funkcji glm::quat glm::angleAxis(float
+ angle, glm::vec3 axis), która zwraca kwaternion reprezentuj¹cy obrót wokó³ podanej osi o podany k¹t. Oblicz obrót
+ dla osi X (wynikaj¹cy z ruchu myszki w kierunku Y) i dla osi Y (wynikaj¹cy z ruchu myszki w kierunku X) i po³¹cz
+ je, mno¿¹c ze sob¹ kwaterniony (kolejnoœæ mno¿enia macierzy jak zwykle nie jest dowolna. Jednak w tym przypadku -
+ poniewa¿ s¹ to tylko inkrementalne, a nie ca³oœciowe obroty - nie ma do du¿ego znaczenia). Po obliczeniu macierzy
+ zmiany rotacji, nale¿y wyzerowaæ zmienne z podpunktu a)!
+
+c) Oblicz nowy obrót (zmienna globalna rotation), poprzez:
+rotation = rotationChange * rotation; // rotationChange to kwaternion z podpunktu b)
+Z powodu potencjalnych niedok³adnoœci numerycznych, otrzymany kwaternion nale¿y znormalizowaæ (funkcja 
+glm::quat glm::normalize(glm::quat q)).
+
+d) W plikach Camera.h i Camera.cpp znajduje siê nowa funkcja Core::createViewMatrixQuat(), która generuje 
+macierz kamery z pozycji i kwaterniona zawieraj¹cego obrót, której nale¿y teraz u¿yæ w miejsce u¿ywanego wczeœniej
+ Core::createViewMatrix().
+
+e) Nale¿y tak¿e w ka¿dym wywo³aniu funkcji createCameraMatrix() aktualizowaæ wartoœci funkcji cameraDir i 
+cameraSide (aby poprawnie dzia³a³o przesuwanie kamery w funkcji keyboard()). cameraDir i cameraSide to z definicji
+ wektory, które w przestrzeni kamery maj¹ postaæ (0,0,-1) i (1,0,0). Aby uzyskaæ te wektory w przestrzeni œwiata
+(bo tam wykonujemy obliczenia przesuwaj¹ce cameraPos), nale¿y je przekszta³ciæ przez ODWROTNY obrót kamery. Mo¿na
+ to zrobiæ mno¿¹c je przez (odwrócony) kwaternion rotation.
+Pseudokod:
+cameraDir = odwrotnoscRotation * (0, 0, -1) 
+Odwrotnoœæ kwaterniona mo¿na uzyskaæ funkcj¹ glm::quat glm::inverse(glm::quat q).
+
+3. Popraw kod przyczepiaj¹cy statek do kamery.
+a) Macierz obrotu bêd¹ca sk³adow¹ shipModelMatrix obliczona przez "glm::rotate(-cameraAngle, glm::vec3(0,1,0))" 
+musi zostaæ zast¹piona inn¹ macierz¹, wynikaj¹c¹ z nowego, bardziej skomplikowanego obrotu kamery zapisanego w 
+kwaternionie. Macierz obrotu 4x4 mo¿na uzyskaæ z kwaterniona u¿ywaj¹c funkcji glm::mat4 glm::mat4_cast(glm::quat q).
+ Znów jednak nale¿y u¿yæ ODWROTNEGO kwaterniona obrotu kamery (* - wyjaœnienie na dole).
+
+4. Dodaj obrót kamery wokó³ trzeciej osi (lokalnej osi Z) przy u¿yciu przycisków Z i X na klawiaturze.
+
+
+
+(*)Macierz obrotu kamery dzia³a z przestrzeni œwiata do przestrzeni kamery. Poniewa¿ chcemy, aby statek by³ 
+"to¿samy z kamer¹", to jego macierz œwiata powinna byæ w³aœciwie przekszta³ceniem z przestrzeni kamery do 
+przestrzeni œwiata - czyli ODWROTNOŒCI¥ przekszta³cenia kamery. Mo¿na to samo rozumowanie zastosowaæ do pe³nej 
+macierzy kamery (razem z translacj¹), ale my akurat robimy translacjê statku w osobnym kroku).
