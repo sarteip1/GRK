@@ -13,12 +13,16 @@
 
 #include "Box.cpp"
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
-#include "Skybox.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 GLuint program;
 GLuint programSun;
-GLuint programSkybox;
 Core::Shader_Loader shaderLoader;
 
 
@@ -84,8 +88,6 @@ void renderScene()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 
-	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-
 	glUseProgram(program);
 
 	// Macierz statku "przyczpeia" go do kamery. Wrato przeanalizowac te linijke i zrozumiec jak to dziala.
@@ -104,16 +106,12 @@ void init()
 	glEnable(GL_DEPTH_TEST);
 	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
-	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
-	initSkybox();
-	
 
 }
 
 void shutdown()
 {
 	shaderLoader.DeleteProgram(program);
-	shaderLoader.DeleteProgram(programSkybox);
 }
 
 void idle()
