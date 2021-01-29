@@ -30,11 +30,3 @@ glm::mat4 Core::createViewMatrix( glm::vec3 position, glm::vec3 forward, glm::ve
 
 	return cameraRotation * cameraTranslation;
 }
-
-glm::mat4 Core::createViewMatrixQuat(glm::vec3 position, glm::quat rotation)
-{
-	glm::mat4 cameraTranslation;
-	cameraTranslation[3] = glm::vec4(-position, 1.0f);
-
-	return glm::mat4_cast(rotation) * cameraTranslation;
-}

@@ -1,2 +1,0 @@
-
-Sprawdzam czy działa xd
