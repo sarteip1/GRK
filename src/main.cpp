@@ -28,7 +28,7 @@ GLuint programTexture;
 GLuint earthTexture;
 GLuint sunTexture;
 GLuint asteroidsTexture;
-GLuint earthTexture;
+GLuint planet1Texture;
 GLuint planet2Texture;
 GLuint planet3Texture;
 
