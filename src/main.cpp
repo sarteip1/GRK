@@ -34,16 +34,13 @@ GLuint texturePlanet2;
 
 //Models
 obj::Model sphereModel;
+obj::Model shipModel;
 
 
 Core::Shader_Loader shaderLoader;
 
 Core::RenderContext sphereContext;
-
-
-Core::RenderContext armContext;
-std::vector<Core::Node> arm;
-int ballIndex;
+Core::RenderContext shipContext;
 
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
@@ -101,12 +98,17 @@ void renderScene()
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 
 	glUseProgram(program);
-	glm::vec3 lightPos = glm::vec3(0.0f);
 
+	glm::mat4 shipModelMatrix =
+		glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0))
+		* glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0))
+		* glm::scale(glm::vec3(0.03f));
+
+	glm::vec3 lightPos = glm::vec3(0.0f);
 	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
+	drawObject(program, shipContext, shipModelMatrix, glm::vec3(0.6f));
 	drawObject(program, sphereContext, glm::translate(glm::vec3(0, 0, 0)), glm::vec3(1.0f, 0.0f, 0.0f));
 
 	glUseProgram(0);
@@ -121,7 +123,10 @@ void init()
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
+	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
 	sphereContext.initFromOBJ(sphereModel);
+	shipContext.initFromOBJ(shipModel);
+	
 	initSkybox();
 }
 
