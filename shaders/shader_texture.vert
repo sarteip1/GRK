@@ -8,11 +8,14 @@ uniform mat4 modelViewProjectionMatrix;
 uniform mat4 modelMatrix;
 
 out vec3 interpNormal;
-out vec2 interpTexCoord;
+out vec3 fragPos;
+out vec2 vertTexCoord;
 
 void main()
 {
 	gl_Position = modelViewProjectionMatrix * vec4(vertexPosition, 1.0);
-	interpNormal = (modelMatrix * vec4(vertexNormal, 0.0)).xyz;
-	interpTexCoord = vertexTexCoord;
+	interpNormal = (modelMatrix*vec4(vertexNormal,0)).xyz;
+	//interpNormal =  mat3(transpose(inverse(modelMatrix))) * vertexNormal;
+	fragPos = (modelMatrix*vec4(vertexPosition,1)).xyz;
+	vertTexCoord = vec2(vertexTexCoord.x, -vertexTexCoord.y);
 }
