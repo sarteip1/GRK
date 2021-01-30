@@ -24,12 +24,6 @@
     <None Include="shaders\shader_color.vert">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_tex.frag">
-      <Filter>Shader Files</Filter>
-    </None>
-    <None Include="shaders\shader_tex.vert">
-      <Filter>Shader Files</Filter>
-    </None>
     <None Include="shaders\shader_skybox.vert">
       <Filter>Shader Files</Filter>
     </None>
