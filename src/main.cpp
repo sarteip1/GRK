@@ -25,17 +25,21 @@ GLuint programColor;
 GLuint programTexture;
 
 //Textures
-GLuint earthTexture;
-GLuint sunTexture;
-GLuint asteroidsTexture;
-GLuint planet1Texture;
-GLuint planet2Texture;
-GLuint planet3Texture;
+GLuint textureEarth;
+GLuint textureAsteroid;
+GLuint textureSun;
+GLuint textureMoon;
+GLuint texturePlanet1;
+GLuint texturePlanet2;
+
+//Models
+obj::Model sphereModel;
+
 
 Core::Shader_Loader shaderLoader;
 
 Core::RenderContext sphereContext;
-obj::Model sphereModel;
+
 
 Core::RenderContext armContext;
 std::vector<Core::Node> arm;
