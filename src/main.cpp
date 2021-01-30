@@ -16,6 +16,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "Skybox.h"
+#include "Texture.h"
 
 //programs
 GLuint program;
@@ -31,6 +32,7 @@ GLuint textureSun;
 GLuint textureMoon;
 GLuint texturePlanet1;
 GLuint texturePlanet2;
+GLuint shipTexture;
 
 //Models
 obj::Model sphereModel;
@@ -47,6 +49,8 @@ glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
 glm::vec3 cameraDir;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
+
+glm::vec3 lightPos = glm::vec3(0.0f, 30.0f, -5000.0f);
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -88,6 +92,20 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 	glUseProgram(0);
 }
 
+void drawObjectTexture(Core::RenderContext* context, GLuint shader, glm::mat4 modelMatrix, GLuint textureId)
+{
+	glUseProgram(shader);
+
+	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
+	glUniform3f(glGetUniformLocation(shader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(glGetUniformLocation(shader, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
+	Core::SetActiveTexture(textureId, "textureSampler", shader, 0);
+	Core::DrawContext(*context);
+	glUseProgram(0);
+}
+
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
@@ -121,13 +139,15 @@ void renderScene()
 	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-	drawObject(program, shipContext, shipModelMatrix, glm::vec3(0.6f));
+	//drawObject(program, shipContext, shipModelMatrix, glm::vec3(0.6f));
 	drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f)); //darkred
 	drawObject(program,sphereContext, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, glm::vec3(0.5f, 0.0f, 0.0f)); //darkmagenta
 	drawObject(program, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, glm::vec3(0.0f, 0.0f, 1.0f)); //blue planet with moon
 	drawObject(programSun, sphereContext, glm::translate(glm::vec3(0, 0, 0)), glm::vec3(1.0f, 0.7f, 0.2f)); // sun
 	drawObject(program, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
 		moonScale, glm::vec3(1.0f, 1.0f, 1.0f)); //moon
+
+	drawObjectTexture(&shipContext, programTexture, shipModelMatrix, shipTexture);
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -139,19 +159,24 @@ void init()
 	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
+	programTexture = shaderLoader.CreateProgram("shaders/shader_texture.vert", "shaders/shader_texture.frag");
 
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
 	sphereContext.initFromOBJ(sphereModel);
 	shipContext.initFromOBJ(shipModel);
-	
+
+	shipTexture = Core::LoadTexturePNG("textures/StarSparrow_Blue.png");
+
 	initSkybox();
 }
 
 void shutdown()
 {
 	shaderLoader.DeleteProgram(program);
+	shaderLoader.DeleteProgram(programSun);
 	shaderLoader.DeleteProgram(programSkybox);
+	shaderLoader.DeleteProgram(programTexture);
 }
 
 void idle()
@@ -164,7 +189,7 @@ int main(int argc, char** argv)
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(200, 300);
-	glutInitWindowSize(600, 600);
+	glutInitWindowSize(1000, 1000);
 	glutCreateWindow("OpenGL Pierwszy Program");
 	glewInit();
 

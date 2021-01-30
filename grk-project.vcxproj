@@ -19,6 +19,8 @@
     <None Include="shaders\shader_skybox.vert" />
     <None Include="shaders\shader_tex.frag" />
     <None Include="shaders\shader_tex.vert" />
+    <None Include="shaders\shader_texture.frag" />
+    <None Include="shaders\shader_texture.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Box.cpp" />
