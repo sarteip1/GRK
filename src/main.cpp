@@ -101,11 +101,8 @@ void renderScene()
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 
 	glUseProgram(program);
-
-	// Macierz statku "przyczpeia" go do kamery. Wrato przeanalizowac te linijke i zrozumiec jak to dziala.
-	//glm::vec3 lightPos = glm::vec3(-4, 1, -4);
 	glm::vec3 lightPos = glm::vec3(0.0f);
-	//glUniform3f(glGetUniformLocation(program, "light_dir"), 2, 1, 0);
+
 	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
