@@ -104,12 +104,30 @@ void renderScene()
 		* glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0))
 		* glm::scale(glm::vec3(0.03f));
 
+	glm::mat4 rotate1, rotate2, rotate3, moonRotate;
+	rotate1 = glm::rotate((time / 10.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate2 = glm::rotate((time / 12.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate3 = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	moonRotate = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	glm::mat4 moonScale, sunScale, planetScale1, planetScale2, planetScale3;
+	moonScale = glm::scale(glm::vec3(0.3, 0.3, 0.3));
+	sunScale = glm::scale(glm::vec3(1.5, 1.5, 1.5));
+	planetScale1 = glm::scale(glm::vec3(0.8, 0.8, 0.8));
+	planetScale2 = glm::scale(glm::vec3(1.2, 1.2, 1.2));
+	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
+
 	glm::vec3 lightPos = glm::vec3(0.0f);
 	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 	drawObject(program, shipContext, shipModelMatrix, glm::vec3(0.6f));
-	drawObject(program, sphereContext, glm::translate(glm::vec3(0, 0, 0)), glm::vec3(1.0f, 0.0f, 0.0f));
+	drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f)); //darkred
+	drawObject(program,sphereContext, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, glm::vec3(0.5f, 0.0f, 0.0f)); //darkmagenta
+	drawObject(program, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, glm::vec3(0.0f, 0.0f, 1.0f)); //blue planet with moon
+	drawObject(programSun, sphereContext, glm::translate(glm::vec3(0, 0, 0)), glm::vec3(1.0f, 0.7f, 0.2f)); // sun
+	drawObject(program, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
+		moonScale, glm::vec3(1.0f, 1.0f, 1.0f)); //moon
 
 	glUseProgram(0);
 	glutSwapBuffers();
