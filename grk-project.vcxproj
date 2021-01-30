@@ -11,6 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\shader_4_1.frag" />
+    <None Include="shaders\shader_4_1.vert" />
     <None Include="shaders\shader_color.frag" />
     <None Include="shaders\shader_color.vert" />
     <None Include="shaders\shader_skybox.frag" />
