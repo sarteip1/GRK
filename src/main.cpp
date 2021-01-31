@@ -30,14 +30,13 @@ GLuint textureEarth;
 GLuint textureAsteroid;
 GLuint textureSun;
 GLuint textureMoon;
-GLuint texturePlanet1;
-GLuint texturePlanet2;
+GLuint textureMars;
+GLuint textureVenus;
 GLuint shipTexture;
 
 //Models
 obj::Model sphereModel;
 obj::Model shipModel;
-
 
 Core::Shader_Loader shaderLoader;
 
@@ -136,16 +135,14 @@ void renderScene()
 	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-	drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f)); //darkred
-	drawObject(program,sphereContext, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, glm::vec3(0.5f, 0.0f, 0.0f)); //darkmagenta
-	//drawObject(program, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, glm::vec3(0.0f, 0.0f, 1.0f)); //blue planet with moon
-	//drawObject(programSun, sphereContext, glm::translate(glm::vec3(0, 0, 0)), glm::vec3(1.0f, 0.7f, 0.2f)); // sun
+	//drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f)); //darkred
+	drawObjectTexture(programTexture, sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, textureVenus);
+	drawObjectTexture(programTexture, sphereContext, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, textureMars);
 	drawObjectTexture(programTexture, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, textureEarth); //Earth
-	//drawObjectTexture(programTexture, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
-	//	moonScale, textureMoon);
+	drawObjectTexture(programTexture, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
+		moonScale, textureMoon);//moon
 	drawObjectTexture(programSun,sphereContext,glm::translate(glm::vec3(0,0,0)),textureSun); //Sun
-	drawObject(program, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
-		moonScale, glm::vec3(1.0f, 1.0f, 1.0f)); //moon
+
 
 	drawObjectTexture(programTexture,shipContext, shipModelMatrix, shipTexture);
 
@@ -160,9 +157,12 @@ void init()
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_texture.vert", "shaders/shader_texture.frag");
 
-	textureEarth = Core::LoadTexturePNG("textures/Earth/earth.png");
+	textureEarth = Core::LoadTexturePNG("textures/Earth/earth2.png");
 	textureSun = Core::LoadTexturePNG("textures/Sun/sunTex.png");
-	textureMoon = Core::LoadTexture("textures/Moon/moon1.png");
+	textureMoon = Core::LoadTexturePNG("textures/Moon/moon2.png");
+	textureAsteroid = Core::LoadTexturePNG("textures/Asteroid/asteroid.png");
+	textureMars = Core::LoadTexturePNG("textures/Planet/mars.png");
+	textureVenus = Core::LoadTexturePNG("textures/Planet/venus.png");
 
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
