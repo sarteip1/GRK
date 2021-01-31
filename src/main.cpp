@@ -51,6 +51,9 @@ glm::mat4 cameraMatrix, perspectiveMatrix;
 
 glm::vec3 lightPos = glm::vec3(0.0f, 30.0f, -5000.0f);
 
+static const int NUM_ASTEROIDS = 8;
+glm::vec3 asteroidPositions[NUM_ASTEROIDS];
+
 void keyboard(unsigned char key, int x, int y)
 {
 	float angleSpeed = 0.1f;
@@ -143,6 +146,10 @@ void renderScene()
 		moonScale, textureMoon);//moon
 	drawObjectTexture(programSun,sphereContext,glm::translate(glm::vec3(0,0,0)),textureSun); //Sun
 
+	for (int i = 0; i < NUM_ASTEROIDS; i++) {
+		drawObjectTexture(programTexture, sphereContext, glm::translate(asteroidPositions[i]) * glm::scale(glm::vec3(0.2f)), textureAsteroid);
+	}
+
 
 	drawObjectTexture(programTexture,shipContext, shipModelMatrix, shipTexture);
 
@@ -170,6 +177,12 @@ void init()
 	shipContext.initFromOBJ(shipModel);
 
 	shipTexture = Core::LoadTexturePNG("textures/StarSparrow_Blue.png");
+
+	static const float astRadius = 6.0;
+	for (int i = 0; i < NUM_ASTEROIDS; i++) {
+		float angle = (float(i) * (2 * glm::pi<float>() / NUM_ASTEROIDS));
+		asteroidPositions[i] = glm::vec3(cosf(angle), 0.0f, sinf(angle)) * astRadius + glm::sphericalRand(0.5f);
+	}
 
 	initSkybox();
 }
