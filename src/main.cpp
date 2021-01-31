@@ -26,13 +26,13 @@ GLuint programColor;
 GLuint programTexture;
 
 //Textures
-GLuint textureEarth;
-GLuint textureAsteroid;
-GLuint textureSun;
-GLuint textureMoon;
-GLuint textureMars;
-GLuint textureVenus;
-GLuint shipTexture;
+GLuint textureEarth, textureEarthNormal;
+GLuint textureAsteroid, textureAsteroidNormal;
+GLuint textureSun, textureSunNormal;
+GLuint textureMoon, textureMoonNormal;
+GLuint textureMars, textureMarsNormal;
+GLuint textureVenus, textureVenusNormal;
+GLuint shipTexture, shipTextureNormal;
 
 //Models
 obj::Model sphereModel;
@@ -49,7 +49,7 @@ glm::vec3 cameraDir;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
-glm::vec3 lightPos = glm::vec3(0.0f, 30.0f, -5000.0f);
+glm::vec3 lightDir = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -91,17 +91,18 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 	glUseProgram(0);
 }
 
-void drawObjectTexture(GLuint programTex, Core::RenderContext context, glm::mat4 modelMatrix, GLuint tex)
+void drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix, GLuint tex, GLuint normalmapId)
 {
-	glUseProgram(programTex);
+	glUseProgram(program);
 
+	glUniform3f(glGetUniformLocation(program, "lightDir"), lightDir.x, lightDir.y, lightDir.z);
+	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
-	glUniform3f(glGetUniformLocation(programTex, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	glUniformMatrix4fv(glGetUniformLocation(programTex, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
-	glUniformMatrix4fv(glGetUniformLocation(programTex, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
-	Core::SetActiveTexture(tex, "textureSampler", programTex, 0);
-	Core::DrawContext(context);
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	Core::SetActiveTexture(tex, "textureSampler", program, 0);
+	Core::SetActiveTexture(normalmapId, "normalSampler", program, 1);
+	Core::DrawModel(model);
 	glUseProgram(0);
 }
 
@@ -135,16 +136,16 @@ void renderScene()
 	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-	//drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f)); //darkred
-	drawObjectTexture(programTexture, sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, textureVenus);
-	drawObjectTexture(programTexture, sphereContext, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, textureMars);
-	drawObjectTexture(programTexture, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, textureEarth); //Earth
-	drawObjectTexture(programTexture, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
-		moonScale, textureMoon);//moon
-	drawObjectTexture(programSun,sphereContext,glm::translate(glm::vec3(0,0,0)),textureSun); //Sun
+	//drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f));
+	drawObjectTexture(programTexture, &sphereModel, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, textureVenus, textureVenusNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, textureMars, textureMarsNormal);
+	drawObjectTexture(programTexture, &sphereModel, glm::translate(glm::vec3(0, 0, 4)) * planetScale2, textureEarth, textureEarthNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
+		moonScale, textureMoon, textureMoonNormal);
+	drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMoonNormal);
 
 
-	drawObjectTexture(programTexture,shipContext, shipModelMatrix, shipTexture);
+	drawObjectTexture(programTexture, &shipModel, shipModelMatrix, shipTexture, shipTextureNormal);
 
 	glutSwapBuffers();
 }
@@ -155,23 +156,31 @@ void init()
 	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_sun_tex.vert", "shaders/shader_sun_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
-	programTexture = shaderLoader.CreateProgram("shaders/shader_texture.vert", "shaders/shader_texture.frag");
+	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 
-	textureEarth = Core::LoadTexturePNG("textures/Earth/earth2.png");
-	textureSun = Core::LoadTexturePNG("textures/Sun/sunTex.png");
-	textureMoon = Core::LoadTexturePNG("textures/Moon/moon2.png");
-	textureAsteroid = Core::LoadTexturePNG("textures/Asteroid/asteroid.png");
-	textureMars = Core::LoadTexturePNG("textures/Planet/mars.png");
-	textureVenus = Core::LoadTexturePNG("textures/Planet/venus.png");
+	textureEarth = Core::LoadTexture("textures/Earth/earth2.png");
+	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
+	textureMoon = Core::LoadTexture("textures/Moon/moon2.png");
+	textureAsteroid = Core::LoadTexture("textures/Asteroid/asteroid.png");
+	textureMars = Core::LoadTexture("textures/Planet/mars.png");
+	textureVenus = Core::LoadTexture("textures/Planet/venus.png");
+
+	textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
+	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
+	//textureAsteroidNormal;
+	textureSunNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
+	textureMoonNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
+	textureMarsNormal = Core::LoadTexture("textures/Planet/mars_normal.png");;
+	shipTextureNormal = Core::LoadTexture("textures/StarSparrow_Normal.png");
 
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
-	sphereContext.initFromOBJ(sphereModel);
-	shipContext.initFromOBJ(shipModel);
+	//sphereContext.initFromOBJ(sphereModel);
+	//shipContext.initFromOBJ(shipModel);
 
-	shipTexture = Core::LoadTexturePNG("textures/StarSparrow_Blue.png");
+	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
 
-	initSkybox();
+	//initSkybox();
 }
 
 void shutdown()
