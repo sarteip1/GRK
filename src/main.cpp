@@ -24,6 +24,8 @@
 #include <assimp/postprocess.h>
 #include "Texture.h"
 
+float frustumScale = 1.f;
+
 //programs
 GLuint program;
 GLuint programSun;
@@ -147,7 +149,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
-	perspectiveMatrix = Core::createPerspectiveMatrix();
+	perspectiveMatrix = Core::createPerspectiveMatrix(0.1f, 100.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -156,7 +158,7 @@ void renderScene()
 	glUseProgram(program);
 
 	glm::mat4 shipModelMatrix =
-		glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0))
+		glm::translate(cameraPos + cameraDir * 0.85f + glm::vec3(0, -0.25f, 0))
 		* glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0))
 		* glm::scale(glm::vec3(0.03f));
 
@@ -233,12 +235,19 @@ void idle()
 	glutPostRedisplay();
 }
 
+void onReshape(int width, int height)
+{
+	frustumScale = (float)width / height;
+
+	glViewport(0, 0, width, height);
+}
+
 int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(200, 200);
-	glutInitWindowSize(600, 600);
+	glutInitWindowSize(800, 450);
 	glutCreateWindow("OpenGL Pierwszy Program");
 	glewInit();
 
@@ -246,6 +255,7 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
+	glutReshapeFunc(onReshape);
 
 	glutMainLoop();
 
