@@ -22,6 +22,7 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include "Render_Utils.h"
 using namespace std;
 
 
@@ -72,7 +73,7 @@ private:
     // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this process on its children nodes (if any).
     void processNode(aiNode* node, const aiScene* scene,glm::mat4 matrix)
     {
-        glm::mat4 outMatrix = matrix * mat4_cast(node->mTransformation);
+        glm::mat4 outMatrix = matrix * Core::mat4_cast(node->mTransformation);
         // process each mesh located at the current node
         for (unsigned int i = 0; i < node->mNumMeshes; i++)
         {

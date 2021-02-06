@@ -2,13 +2,13 @@
    All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met: 
+modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
+   list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice,
    this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution. 
+   and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -32,259 +32,322 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 #include <map>
 #include <set>
 #include <vector>
+#include "glm.hpp"
 
 namespace obj {
 
-struct Model {
-    std::vector<float> vertex; //< 3 * N entries
-    std::vector<float> texCoord; //< 2 * N entries
-    std::vector<float> normal; //< 3 * N entries
-    
-    std::map<std::string, std::vector<unsigned short> > faces; //< assume triangels and uniform indexing
-};
+    struct Model {
+        std::vector<float> vertex; //< 3 * N entries
+        std::vector<float> texCoord; //< 2 * N entries
+        std::vector<float> normal; //< 3 * N entries
+        std::vector<float> tangent; //< 3 * N entries
+        std::vector<float> bitangent; //< 3 * N entries
 
-struct ObjModel {
-    struct FaceVertex {
-        FaceVertex() : v(-1), t(-1), n(-1) {}
-        int v, t, n;
-        
-        bool operator<( const FaceVertex & other ) const;
-        bool operator==( const FaceVertex & other ) const;
+        std::map<std::string, std::vector<unsigned short> > faces; //< assume triangels and uniform indexing
     };
-    
-    typedef std::pair<std::vector<FaceVertex>, std::vector<unsigned> > FaceList;
 
-    std::vector<float> vertex; //< 3 * N entries
-    std::vector<float> texCoord; //< 2 * N entries
-    std::vector<float> normal; //< 3 * N entries
+    struct ObjModel {
+        struct FaceVertex {
+            FaceVertex() : v(-1), t(-1), n(-1) {}
+            int v, t, n;
 
-    std::map<std::string, FaceList > faces;
-};
+            bool operator<(const FaceVertex& other) const;
+            bool operator==(const FaceVertex& other) const;
+        };
 
-inline ObjModel parseObjModel( std::istream & in);
-inline void tesselateObjModel( ObjModel & obj);
-inline ObjModel tesselateObjModel( const ObjModel & obj );
-inline Model convertToModel( const ObjModel & obj );
+        typedef std::pair<std::vector<FaceVertex>, std::vector<unsigned> > FaceList;
 
-inline Model loadModel( std::istream & in );
-inline Model loadModelFromString( const std::string & in );
-inline Model loadModelFromFile( const std::string & in );
+        std::vector<float> vertex; //< 3 * N entries
+        std::vector<float> texCoord; //< 2 * N entries
+        std::vector<float> normal; //< 3 * N entries
 
-inline std::ostream & operator<<( std::ostream & out, const Model & m );
-inline std::ostream & operator<<( std::ostream & out, const ObjModel::FaceVertex & f);
+        std::map<std::string, FaceList > faces;
+    };
 
-// ---------------------------- Implementation starts here -----------------------
+    inline ObjModel parseObjModel(std::istream& in);
+    inline void tesselateObjModel(ObjModel& obj);
+    inline ObjModel tesselateObjModel(const ObjModel& obj);
+    inline Model convertToModel(const ObjModel& obj);
 
-inline bool ObjModel::FaceVertex::operator<( const ObjModel::FaceVertex & other ) const {
-    return (v < other.v) || (v == other.v && t < other.t ) || (v == other.v && t == other.t && n < other.n);
-}
+    inline Model loadModel(std::istream& in);
+    inline Model loadModelFromString(const std::string& in);
+    inline Model loadModelFromFile(const std::string& in);
 
-inline bool ObjModel::FaceVertex::operator==( const ObjModel::FaceVertex & other ) const {
-    return (v == other.v && t == other.t && n == other.n);
-}
+    inline std::ostream& operator<<(std::ostream& out, const Model& m);
+    inline std::ostream& operator<<(std::ostream& out, const ObjModel::FaceVertex& f);
 
-template <typename T>
-inline std::istream & operator>>(std::istream & in, std::vector<T> & vec ){
-    T temp;
-    if(in >> temp) 
-        vec.push_back(temp);
-    return in;
-}
+    // ---------------------------- Implementation starts here -----------------------
 
-template <typename T>
-inline std::istream & operator>>(std::istream & in, std::set<T> & vec ){
-    T temp;
-    if(in >> temp) 
-        vec.insert(temp);
-    return in;
-}
+    inline bool ObjModel::FaceVertex::operator<(const ObjModel::FaceVertex& other) const {
+        return (v < other.v) || (v == other.v && t < other.t) || (v == other.v && t == other.t && n < other.n);
+    }
 
-inline std::istream & operator>>( std::istream & in, ObjModel::FaceVertex & f){
-    if(in >> f.v){
-        if(in.peek() == '/'){
-            in.get();
-            in >> f.t;
-            in.clear();
-            if(in.peek() == '/'){
+    inline bool ObjModel::FaceVertex::operator==(const ObjModel::FaceVertex& other) const {
+        return (v == other.v && t == other.t && n == other.n);
+    }
+
+    template <typename T>
+    inline std::istream& operator>>(std::istream& in, std::vector<T>& vec) {
+        T temp;
+        if (in >> temp)
+            vec.push_back(temp);
+        return in;
+    }
+
+    template <typename T>
+    inline std::istream& operator>>(std::istream& in, std::set<T>& vec) {
+        T temp;
+        if (in >> temp)
+            vec.insert(temp);
+        return in;
+    }
+
+    inline std::istream& operator>>(std::istream& in, ObjModel::FaceVertex& f) {
+        if (in >> f.v) {
+            if (in.peek() == '/') {
                 in.get();
-                in >> f.n;
+                in >> f.t;
                 in.clear();
+                if (in.peek() == '/') {
+                    in.get();
+                    in >> f.n;
+                    in.clear();
+                }
+            }
+            in.clear();
+            --f.v;
+            --f.t;
+            --f.n;
+        }
+        // std::cout << f << std::endl;
+        return in;
+    }
+
+    ObjModel parseObjModel(std::istream& in) {
+        char line[1024];
+        std::string op;
+        std::istringstream line_in;
+        std::set<std::string> groups;
+        groups.insert("default");
+
+        ObjModel data;
+
+        while (in.good()) {
+            in.getline(line, 1023);
+            line_in.clear();
+            line_in.str(line);
+
+            if (!(line_in >> op))
+                continue;
+            if (op == "v")
+                line_in >> data.vertex >> data.vertex >> data.vertex;
+            else if (op == "vt")
+                line_in >> data.texCoord >> data.texCoord >> data.texCoord;
+            else if (op == "vn")
+                line_in >> data.normal >> data.normal >> data.normal;
+            else if (op == "g") {
+                groups.clear();
+                while (line_in >> groups);
+                groups.insert("default");
+            }
+            else if (op == "f") {
+                std::vector<ObjModel::FaceVertex> list;
+                while (line_in >> list);
+
+                for (std::set<std::string>::const_iterator g = groups.begin(); g != groups.end(); ++g) {
+                    ObjModel::FaceList& fl = data.faces[*g];
+                    fl.second.push_back(fl.first.size());
+                    fl.first.insert(fl.first.end(), list.begin(), list.end());
+                }
             }
         }
-        in.clear();
-        --f.v;
-        --f.t;
-        --f.n;
-    }
-    // std::cout << f << std::endl;
-    return in;
-}
-
-ObjModel parseObjModel( std::istream & in ){
-    char line[1024];
-    std::string op;
-    std::istringstream line_in;
-    std::set<std::string> groups;
-    groups.insert("default");
-
-    ObjModel data;
-
-    while(in.good()){
-        in.getline(line, 1023);
-        line_in.clear();
-        line_in.str(line);
-
-        if(!(line_in >> op))
-            continue;
-        if(op == "v")
-            line_in >> data.vertex >> data.vertex >> data.vertex;
-        else if(op == "vt")
-            line_in >> data.texCoord >> data.texCoord >> data.texCoord;
-        else if(op == "vn")
-            line_in >> data.normal >> data.normal >> data.normal;
-        else if(op == "g"){
-            groups.clear();
-            while(line_in >> groups) ;
-            groups.insert("default");
+        for (std::map<std::string, ObjModel::FaceList>::iterator g = data.faces.begin(); g != data.faces.end(); ++g) {
+            ObjModel::FaceList& fl = g->second;
+            fl.second.push_back(fl.first.size());
         }
-        else if(op == "f") {
-            std::vector<ObjModel::FaceVertex> list;
-            while(line_in >> list) ;
-            
-            for(std::set<std::string>::const_iterator g = groups.begin(); g != groups.end(); ++g){
-                ObjModel::FaceList & fl = data.faces[*g];
-                fl.second.push_back(fl.first.size());
-                fl.first.insert(fl.first.end(), list.begin(), list.end());
+        return data;
+    }
+
+    inline void tesselateObjModel(std::vector<ObjModel::FaceVertex>& input, std::vector<unsigned>& input_start) {
+        std::vector<ObjModel::FaceVertex> output;
+        std::vector<unsigned> output_start;
+        output.reserve(input.size());
+        output_start.reserve(input_start.size());
+
+        for (std::vector<unsigned>::const_iterator s = input_start.begin(); s != input_start.end() - 1; ++s) {
+            const unsigned size = *(s + 1) - *s;
+            if (size > 3) {
+                const ObjModel::FaceVertex& start_vertex = input[*s];
+                for (int i = 1; i < (int)size - 1; ++i) {
+                    output_start.push_back(output.size());
+                    output.push_back(start_vertex);
+                    output.push_back(input[*s + i]);
+                    output.push_back(input[*s + i + 1]);
+                }
             }
-        }
-    }
-    for(std::map<std::string, ObjModel::FaceList>::iterator g = data.faces.begin(); g != data.faces.end(); ++g){
-        ObjModel::FaceList & fl = g->second;
-        fl.second.push_back(fl.first.size());
-    }
-    return data;
-}
-
-inline void tesselateObjModel( std::vector<ObjModel::FaceVertex> & input, std::vector<unsigned> & input_start){
-    std::vector<ObjModel::FaceVertex> output;
-    std::vector<unsigned> output_start;
-    output.reserve(input.size());
-    output_start.reserve(input_start.size());
-    
-    for(std::vector<unsigned>::const_iterator s = input_start.begin(); s != input_start.end() - 1; ++s){
-        const unsigned size = *(s+1) - *s;
-        if(size > 3){
-            const ObjModel::FaceVertex & start_vertex = input[*s];
-            for( int i = 1; i < (int)size-1; ++i){
+            else {
                 output_start.push_back(output.size());
-                output.push_back(start_vertex);
-                output.push_back(input[*s+i]);
-                output.push_back(input[*s+i+1]);
+                output.insert(output.end(), input.begin() + *s, input.begin() + *(s + 1));
             }
-        } else {
-            output_start.push_back(output.size());
-            output.insert(output.end(), input.begin() + *s, input.begin() + *(s+1));
+        }
+        output_start.push_back(output.size());
+        input.swap(output);
+        input_start.swap(output_start);
+    }
+
+    void tesselateObjModel(ObjModel& obj) {
+        for (std::map<std::string, ObjModel::FaceList>::iterator g = obj.faces.begin(); g != obj.faces.end(); ++g) {
+            ObjModel::FaceList& fl = g->second;
+            tesselateObjModel(fl.first, fl.second);
         }
     }
-    output_start.push_back(output.size());
-    input.swap(output);
-    input_start.swap(output_start);
-}
 
-void tesselateObjModel( ObjModel & obj){
-    for(std::map<std::string, ObjModel::FaceList>::iterator g = obj.faces.begin(); g != obj.faces.end(); ++g){
-        ObjModel::FaceList & fl = g->second;
-        tesselateObjModel(fl.first, fl.second);
-    }
-}
+    Model convertToModel(const ObjModel& obj) {
+        // insert all face vertices into a vector and make unique
+        std::vector<ObjModel::FaceVertex> unique(obj.faces.find("default")->second.first);
+        std::sort(unique.begin(), unique.end());
+        unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
 
-Model convertToModel( const ObjModel & obj ) {
-    // insert all face vertices into a vector and make unique
-    std::vector<ObjModel::FaceVertex> unique(obj.faces.find("default")->second.first);
-    std::sort(unique.begin(), unique.end());
-    unique.erase( std::unique(unique.begin(), unique.end()), unique.end());
-
-    // build a new model with repeated vertices/texcoords/normals to have single indexing
-    Model model;
-    for(std::vector<ObjModel::FaceVertex>::const_iterator f = unique.begin(); f != unique.end(); ++f){
-        model.vertex.insert(model.vertex.end(), obj.vertex.begin() + 3*f->v, obj.vertex.begin() + 3*f->v + 3);
-        if(!obj.texCoord.empty()){
-            const int index = (f->t > -1) ? f->t : f->v;
-            model.texCoord.insert(model.texCoord.end(), obj.texCoord.begin() + 2*index, obj.texCoord.begin() + 2*index + 2);
+        // build a new model with repeated vertices/texcoords/normals to have single indexing
+        Model model;
+        for (std::vector<ObjModel::FaceVertex>::const_iterator f = unique.begin(); f != unique.end(); ++f) {
+            model.vertex.insert(model.vertex.end(), obj.vertex.begin() + 3 * f->v, obj.vertex.begin() + 3 * f->v + 3);
+            if (!obj.texCoord.empty()) {
+                const int index = (f->t > -1) ? f->t : f->v;
+                model.texCoord.insert(model.texCoord.end(), obj.texCoord.begin() + 2 * index, obj.texCoord.begin() + 2 * index + 2);
+            }
+            if (!obj.normal.empty()) {
+                const int index = (f->n > -1) ? f->n : f->v;
+                model.normal.insert(model.normal.end(), obj.normal.begin() + 3 * index, obj.normal.begin() + 3 * index + 3);
+            }
         }
-        if(!obj.normal.empty()){
-            const int index = (f->n > -1) ? f->n : f->v;
-            model.normal.insert(model.normal.end(), obj.normal.begin() + 3*index, obj.normal.begin() + 3*index + 3);
+        // look up unique index and transform face descriptions
+        for (std::map<std::string, ObjModel::FaceList>::const_iterator g = obj.faces.begin(); g != obj.faces.end(); ++g) {
+            const std::string& name = g->first;
+            const ObjModel::FaceList& fl = g->second;
+            std::vector<unsigned short>& v = model.faces[g->first];
+            v.reserve(fl.first.size());
+            for (std::vector<ObjModel::FaceVertex>::const_iterator f = fl.first.begin(); f != fl.first.end(); ++f) {
+                const unsigned short index = std::distance(unique.begin(), std::lower_bound(unique.begin(), unique.end(), *f));
+                v.push_back(index);
+            }
         }
-    }
-    // look up unique index and transform face descriptions
-    for(std::map<std::string, ObjModel::FaceList>::const_iterator g = obj.faces.begin(); g != obj.faces.end(); ++g){
-        const std::string & name = g->first;
-        const ObjModel::FaceList & fl = g->second;
-        std::vector<unsigned short> & v = model.faces[g->first];
-        v.reserve(fl.first.size());
-        for(std::vector<ObjModel::FaceVertex>::const_iterator f = fl.first.begin(); f != fl.first.end(); ++f){
-            const unsigned short index = std::distance(unique.begin(), std::lower_bound(unique.begin(), unique.end(), *f));
-            v.push_back(index);
+        // compute tangents
+        auto& indices = model.faces["default"];
+        model.tangent.resize(model.normal.size(), 0.f);
+        model.bitangent.resize(model.normal.size(), 0.f);
+        for (int i = 0; i < (int)indices.size(); i += 3)
+        {
+            auto& i0 = indices[i], & i1 = indices[i + 1], & i2 = indices[i + 2];
+            glm::vec3 v0(model.vertex[3 * i0 + 0], model.vertex[3 * i0 + 1], model.vertex[3 * i0 + 2]);
+            glm::vec3 v1(model.vertex[3 * i1 + 0], model.vertex[3 * i1 + 1], model.vertex[3 * i1 + 2]);
+            glm::vec3 v2(model.vertex[3 * i2 + 0], model.vertex[3 * i2 + 1], model.vertex[3 * i2 + 2]);
+
+            glm::vec2 uv0(model.texCoord[2 * i0 + 0], model.texCoord[2 * i0 + 1]);
+            glm::vec2 uv1(model.texCoord[2 * i1 + 0], model.texCoord[2 * i1 + 1]);
+            glm::vec2 uv2(model.texCoord[2 * i2 + 0], model.texCoord[2 * i2 + 1]);
+
+            glm::vec3 deltaPos1 = v1 - v0;
+            glm::vec3 deltaPos2 = v2 - v0;
+
+            glm::vec2 deltaUV1 = uv1 - uv0;
+            glm::vec2 deltaUV2 = uv2 - uv0;
+
+            float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+            glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+            glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+
+            for (int j = 0; j < 3; j++)
+            {
+                model.tangent[3 * i0 + j] += tangent[j];
+                model.tangent[3 * i1 + j] += tangent[j];
+                model.tangent[3 * i2 + j] += tangent[j];
+
+                model.bitangent[3 * i0 + j] += bitangent[j];
+                model.bitangent[3 * i1 + j] += bitangent[j];
+                model.bitangent[3 * i2 + j] += bitangent[j];
+            }
         }
-    }
-    return model;
-}
+        for (auto& i : indices)
+        {
+            auto& tx = model.tangent[3 * i + 0];
+            auto& ty = model.tangent[3 * i + 1];
+            auto& tz = model.tangent[3 * i + 2];
 
-ObjModel tesselateObjModel( const ObjModel & obj ){
-    ObjModel result = obj;
-    tesselateObjModel(result);
-    return result;
-}
+            auto& bx = model.bitangent[3 * i + 0];
+            auto& by = model.bitangent[3 * i + 1];
+            auto& bz = model.bitangent[3 * i + 2];
 
-Model loadModel( std::istream & in ){
-    ObjModel model = parseObjModel(in);
-    tesselateObjModel(model);
-    return convertToModel(model);
-}
+            glm::vec3 n(model.normal[3 * i + 0], model.normal[3 * i + 1], model.normal[3 * i + 2]);
+            auto t = glm::normalize(glm::vec3(tx, ty, tz));
+            auto b = glm::normalize(glm::vec3(bx, by, bz));
 
-Model loadModelFromString( const std::string & str ){
-    std::istringstream in(str);
-    return loadModel(in);
-}
+            t = glm::normalize(t - n * glm::dot(n, t));
 
-Model loadModelFromFile( const std::string & str) {
-    std::ifstream in(str.c_str());
-    return loadModel(in);
-}
+            if (glm::dot(glm::cross(n, t), b) < 0.0f) {
+                t = -t;
+            }
 
-inline std::ostream & operator<<( std::ostream & out, const ObjModel::FaceVertex & f){
-    out << f.v << "\t" << f.t << "\t" << f.n;
-    return out;
-}
-
-std::ostream & operator<<( std::ostream & out, const Model & m ){
-    if(!m.vertex.empty()){
-        out << "vertex\n";
-        for(int i = 0; i < (int)m.vertex.size(); ++i)
-            out << m.vertex[i] << (((i % 3) == 2)?"\n":"\t");
-    }
-    if(!m.texCoord.empty()){
-        out << "texCoord\n";
-        for(int i = 0; i < (int)m.texCoord.size(); ++i)
-            out << m.texCoord[i] << (((i % 2) == 1)?"\n":"\t");
-    }
-    if(!m.normal.empty()){
-        out << "normal\n";
-        for(int i = 0; i < (int)m.normal.size(); ++i)
-            out << m.normal[i] << (((i % 3) == 2)?"\n":"\t");
-    }
-    if(!m.faces.empty()){
-        out << "faces\t";
-        for(std::map<std::string, std::vector<unsigned short> >::const_iterator g = m.faces.begin(); g != m.faces.end(); ++g){
-            out << g->first << " ";
+            tx = t.x, ty = t.y, tz = t.z;
+            bx = b.x, by = b.y, bz = b.z;
         }
-        out << "\n";
-//        for(int i = 0; i < m.face.size(); ++i)
-//            out << m.face[i] << (((i % 3) == 2)?"\n":"\t");
+        return model;
     }
-    return out;
-}
+
+    ObjModel tesselateObjModel(const ObjModel& obj) {
+        ObjModel result = obj;
+        tesselateObjModel(result);
+        return result;
+    }
+
+    Model loadModel(std::istream& in) {
+        ObjModel model = parseObjModel(in);
+        tesselateObjModel(model);
+        return convertToModel(model);
+    }
+
+    Model loadModelFromString(const std::string& str) {
+        std::istringstream in(str);
+        return loadModel(in);
+    }
+
+    Model loadModelFromFile(const std::string& str) {
+        std::ifstream in(str.c_str());
+        return loadModel(in);
+    }
+
+    inline std::ostream& operator<<(std::ostream& out, const ObjModel::FaceVertex& f) {
+        out << f.v << "\t" << f.t << "\t" << f.n;
+        return out;
+    }
+
+    std::ostream& operator<<(std::ostream& out, const Model& m) {
+        if (!m.vertex.empty()) {
+            out << "vertex\n";
+            for (int i = 0; i < (int)m.vertex.size(); ++i)
+                out << m.vertex[i] << (((i % 3) == 2) ? "\n" : "\t");
+        }
+        if (!m.texCoord.empty()) {
+            out << "texCoord\n";
+            for (int i = 0; i < (int)m.texCoord.size(); ++i)
+                out << m.texCoord[i] << (((i % 2) == 1) ? "\n" : "\t");
+        }
+        if (!m.normal.empty()) {
+            out << "normal\n";
+            for (int i = 0; i < (int)m.normal.size(); ++i)
+                out << m.normal[i] << (((i % 3) == 2) ? "\n" : "\t");
+        }
+        if (!m.faces.empty()) {
+            out << "faces\t";
+            for (std::map<std::string, std::vector<unsigned short> >::const_iterator g = m.faces.begin(); g != m.faces.end(); ++g) {
+                out << g->first << " ";
+            }
+            out << "\n";
+            //        for(int i = 0; i < m.face.size(); ++i)
+            //            out << m.face[i] << (((i % 3) == 2)?"\n":"\t");
+        }
+        return out;
+    }
 
 } // namespace obj
 

@@ -79,4 +79,6 @@ namespace Core
 	void DrawVertexArray(const VertexData & data);
 
 	void DrawContext(RenderContext& context);
+
+	void DrawModel(obj::Model* model);
 }
