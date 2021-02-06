@@ -12,7 +12,7 @@
 
 GLuint skyboxVAO;
 GLuint skyboxVBO;
-GLuint cubeTexture;
+GLuint cubemapTexture;
 
 float skyboxVertices[] = {
 	-1.0f,  1.0f, -1.0f,
@@ -135,24 +135,19 @@ void createCubeTexture() {
 
 void renderSkybox(GLuint programSkybox, glm::mat4 cameraMatrix, glm::mat4 perspectiveMatrix)
 {
-	//glDepthMask(GL_FALSE);
-	glDepthFunc(GL_LEQUAL);
+	glDepthMask(GL_FALSE);
 	glUseProgram(programSkybox);
 
 	glm::mat4 view = glm::mat4(glm::mat3(cameraMatrix));
 	glUniformMatrix4fv(glGetUniformLocation(programSkybox, "projection"), 1, GL_FALSE, (float*)&perspectiveMatrix);
 	glUniformMatrix4fv(glGetUniformLocation(programSkybox, "view"), 1, GL_FALSE, (float*)&view);
-	glBindVertexArray(skyboxVAO);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTexture);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	glBindVertexArray(0);
-	glDepthFunc(GL_LESS);
-	glUseProgram(0);
-	//glDepthMask(GL_TRUE);
 
-	//glDepthRange(0.0, 0.9);
-	glClear(GL_DEPTH_BUFFER_BIT);
+	glBindVertexArray(skyboxVAO);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glDepthMask(GL_TRUE);
+	glUseProgram(0);
+	glBindVertexArray(0);
 }
 
 void initSkybox()
@@ -163,7 +158,9 @@ void initSkybox()
 	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glBindVertexArray(0);
-	cubeTexture = loadCubeTexture();
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	cubemapTexture = loadCubeTexture();
 }

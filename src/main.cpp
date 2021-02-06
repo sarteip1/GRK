@@ -6,6 +6,23 @@
 #include <cmath>
 #include <ctime>
 
+#include "Skybox.h"
+
+#include <fstream>
+#include <iterator>
+#include <vector>
+#include "stb_image.h"
+
+//#include <fstream>
+//#include <iterator>
+//#include <vector>
+//#define STB_IMAGE_IMPLEMENTATION
+//#include "stb_image.h"
+//#include <iostream>
+//#include "glew.h"
+//#include "freeglut.h"
+//#include "glm.hpp"
+
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
 #include "Camera.h"
@@ -15,7 +32,6 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include "Skybox.h"
 #include "Texture.h"
 
 //programs
@@ -106,6 +122,51 @@ void drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix,
 	glUseProgram(0);
 }
 
+//GLuint skyboxVAO;
+//unsigned int cubemapTexture;
+
+//std::vector<std::string> faces
+//{
+//	"textures/Skybox/vision6/right.png",
+//	"textures/Skybox/vision6/left.png",
+//	"textures/Skybox/vision6/top.png",
+//	"textures/Skybox/vision6/bottom.png",
+//	"textures/Skybox/vision6/front.png",
+//	"textures/Skybox/vision6/back.png"
+//};
+
+unsigned int loadCubemap(std::vector<std::string> faces)
+{
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+	int width, height, nrChannels;
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+			);
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+			stbi_image_free(data);
+		}
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
+
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
@@ -135,11 +196,21 @@ void renderScene()
 	planetScale2 = glm::scale(glm::vec3(1.2, 1.2, 1.2));
 	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
 
-	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
+	
 	//drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f));
+
+	//glDepthMask(GL_FALSE);
+	//programSkybox.use();
+	//glBindVertexArray(skyboxVAO);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+	//glDrawArrays(GL_TRIANGLES, 0, 36);
+	//glDepthMask(GL_TRUE);
+
+	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
+
 	drawObjectTexture(programTexture, &sphereModel, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, textureVenus, textureVenusNormal);
 	drawObjectTexture(programTexture, &sphereModel, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, textureMars, textureMarsNormal);
-	drawObjectTexture(programTexture, &sphereModel, glm::translate(glm::vec3(0, 0, 4)) * planetScale2, textureEarth, textureEarthNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, textureEarth, textureEarthNormal);
 	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
 		moonScale, textureMoon, textureMoonNormal);
 	drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMoonNormal);
@@ -149,6 +220,7 @@ void renderScene()
 
 	glutSwapBuffers();
 }
+
 
 void init()
 {
@@ -180,7 +252,9 @@ void init()
 
 	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
 
-	//initSkybox();
+	//cubemapTexture = loadCubemap(faces);
+
+	initSkybox();
 }
 
 void shutdown()
