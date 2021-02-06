@@ -13,16 +13,6 @@
 #include <vector>
 #include "stb_image.h"
 
-//#include <fstream>
-//#include <iterator>
-//#include <vector>
-//#define STB_IMAGE_IMPLEMENTATION
-//#include "stb_image.h"
-//#include <iostream>
-//#include "glew.h"
-//#include "freeglut.h"
-//#include "glm.hpp"
-
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
 #include "Camera.h"
@@ -122,19 +112,6 @@ void drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix,
 	glUseProgram(0);
 }
 
-//GLuint skyboxVAO;
-//unsigned int cubemapTexture;
-
-//std::vector<std::string> faces
-//{
-//	"textures/Skybox/vision6/right.png",
-//	"textures/Skybox/vision6/left.png",
-//	"textures/Skybox/vision6/top.png",
-//	"textures/Skybox/vision6/bottom.png",
-//	"textures/Skybox/vision6/front.png",
-//	"textures/Skybox/vision6/back.png"
-//};
-
 unsigned int loadCubemap(std::vector<std::string> faces)
 {
 	unsigned int textureID;
@@ -196,16 +173,6 @@ void renderScene()
 	planetScale2 = glm::scale(glm::vec3(1.2, 1.2, 1.2));
 	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
 
-	
-	//drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f));
-
-	//glDepthMask(GL_FALSE);
-	//programSkybox.use();
-	//glBindVertexArray(skyboxVAO);
-	//glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-	//glDrawArrays(GL_TRIANGLES, 0, 36);
-	//glDepthMask(GL_TRUE);
-
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 
 	drawObjectTexture(programTexture, &sphereModel, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, textureVenus, textureVenusNormal);
@@ -247,12 +214,8 @@ void init()
 
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
-	//sphereContext.initFromOBJ(sphereModel);
-	//shipContext.initFromOBJ(shipModel);
 
 	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
-
-	//cubemapTexture = loadCubemap(faces);
 
 	initSkybox();
 }
