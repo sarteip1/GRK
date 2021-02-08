@@ -18,12 +18,12 @@ void main()
 	
 	float diffuse = max(0, dot(N, L));
 	
-	float specular_pow = 20;
+	float specular_pow = 100;
 	float specular = pow(max(0, dot(R, V)), specular_pow);
 
 	vec3 color = texture2D(textureSampler, interpTexCoord).rgb;
 
-	vec3 lightColor = vec3(1);
+	vec3 lightColor = vec3(0.7f);
 	vec3 shadedColor = color * diffuse + lightColor * specular;
 	
 	float ambient = 0.2;
