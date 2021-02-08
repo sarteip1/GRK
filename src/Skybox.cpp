@@ -60,12 +60,12 @@ float skyboxVertices[] = {
 
 std::vector<std::string> faces
 {
-	"textures/Skybox/vision6/right.png",
-	"textures/Skybox/vision6/left.png",
-	"textures/Skybox/vision6/top.png",
-	"textures/Skybox/vision6/bottom.png",
-	"textures/Skybox/vision6/front.png",
-	"textures/Skybox/vision6/back.png"
+	"textures/Skybox/vision1/right.png",
+	"textures/Skybox/vision1/left.png",
+	"textures/Skybox/vision1/top.png",
+	"textures/Skybox/vision1/bottom.png",
+	"textures/Skybox/vision1/front.png",
+	"textures/Skybox/vision1/back.png"
 };
 
 unsigned int loadCubeTexture()
