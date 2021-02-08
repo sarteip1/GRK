@@ -6,6 +6,13 @@
 #include <cmath>
 #include <ctime>
 
+#include "Skybox.h"
+
+#include <fstream>
+#include <iterator>
+#include <vector>
+#include "stb_image.h"
+
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
 #include "Camera.h"
@@ -15,8 +22,9 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include "Skybox.h"
 #include "Texture.h"
+
+float frustumScale = 1.f;
 
 //programs
 GLuint program;
@@ -26,13 +34,13 @@ GLuint programColor;
 GLuint programTexture;
 
 //Textures
-GLuint textureEarth;
-GLuint textureAsteroid;
-GLuint textureSun;
-GLuint textureMoon;
-GLuint textureMars;
-GLuint textureVenus;
-GLuint shipTexture;
+GLuint textureEarth, textureEarthNormal;
+GLuint textureAsteroid, textureAsteroidNormal;
+GLuint textureSun, textureSunNormal;
+GLuint textureMoon, textureMoonNormal;
+GLuint textureMars, textureMarsNormal;
+GLuint textureVenus, textureVenusNormal;
+GLuint shipTexture, shipTextureNormal;
 
 //Models
 obj::Model sphereModel;
@@ -49,7 +57,8 @@ glm::vec3 cameraDir;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
-glm::vec3 lightPos = glm::vec3(0.0f, 30.0f, -5000.0f);
+//glm::vec3 lightDir = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
+glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
 
 static const int NUM_ASTEROIDS = 8;
 glm::vec3 asteroidPositions[NUM_ASTEROIDS];
@@ -94,24 +103,58 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 	glUseProgram(0);
 }
 
-void drawObjectTexture(GLuint programTex, Core::RenderContext context, glm::mat4 modelMatrix, GLuint tex)
+void drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix, GLuint tex, GLuint normalmapId)
 {
-	glUseProgram(programTex);
+	glUseProgram(program);
 
+	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	//glUniform3f(glGetUniformLocation(program, "lightDir"), lightDir.x, lightDir.y, lightDir.z);
+	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
-	glUniform3f(glGetUniformLocation(programTex, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	glUniformMatrix4fv(glGetUniformLocation(programTex, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
-	glUniformMatrix4fv(glGetUniformLocation(programTex, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
-	Core::SetActiveTexture(tex, "textureSampler", programTex, 0);
-	Core::DrawContext(context);
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	Core::SetActiveTexture(tex, "textureSampler", program, 0);
+	Core::SetActiveTexture(normalmapId, "normalSampler", program, 1);
+	Core::DrawModel(model);
 	glUseProgram(0);
+}
+
+unsigned int loadCubemap(std::vector<std::string> faces)
+{
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+	int width, height, nrChannels;
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+			);
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+			stbi_image_free(data);
+		}
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
 }
 
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
-	perspectiveMatrix = Core::createPerspectiveMatrix();
+	perspectiveMatrix = Core::createPerspectiveMatrix(0.1f, 100.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -120,14 +163,15 @@ void renderScene()
 	glUseProgram(program);
 
 	glm::mat4 shipModelMatrix =
-		glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0))
+		glm::translate(cameraPos + cameraDir * 0.85f + glm::vec3(0, -0.25f, 0))
 		* glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0))
 		* glm::scale(glm::vec3(0.03f));
 
-	glm::mat4 rotate1, rotate2, rotate3, moonRotate;
-	rotate1 = glm::rotate((time / 10.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
-	rotate2 = glm::rotate((time / 12.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
-	rotate3 = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	glm::mat4 rotate1, rotate2, rotate3, rotate4, moonRotate;
+	rotate1 = glm::rotate((time / 100.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate2 = glm::rotate((time / 120.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate3 = glm::rotate((time / 150.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate4 = glm::rotate((time / 6.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
 	moonRotate = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 1.0f, 0.0f));
 
 	glm::mat4 moonScale, sunScale, planetScale1, planetScale2, planetScale3;
@@ -138,23 +182,24 @@ void renderScene()
 	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-	//drawObject(program,sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, glm::vec3(0.5f, 0.0f, 0.5f)); //darkred
-	drawObjectTexture(programTexture, sphereContext, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, textureVenus);
-	drawObjectTexture(programTexture, sphereContext, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, textureMars);
-	drawObjectTexture(programTexture, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, textureEarth); //Earth
-	drawObjectTexture(programTexture, sphereContext, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
-		moonScale, textureMoon);//moon
-	drawObjectTexture(programSun,sphereContext,glm::translate(glm::vec3(0,0,0)),textureSun); //Sun
+
+	drawObjectTexture(programTexture, &sphereModel, rotate1 * glm::translate(glm::vec3(0, 0, -10)) * planetScale3 * rotate4, textureVenus, textureMarsNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate2 * glm::translate(glm::vec3(0, 0, 25)) * planetScale1 * rotate4, textureMars, textureMarsNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 20)) * planetScale2 * rotate4, textureEarth, textureEarthNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 20)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
+		moonScale, textureMoon, textureMarsNormal);
+	drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMarsNormal);
 
 	for (int i = 0; i < NUM_ASTEROIDS; i++) {
 		drawObjectTexture(programTexture, sphereContext, glm::translate(asteroidPositions[i]) * glm::scale(glm::vec3(0.2f)), textureAsteroid);
 	}
 
 
-	drawObjectTexture(programTexture,shipContext, shipModelMatrix, shipTexture);
+	drawObjectTexture(programTexture, &shipModel, shipModelMatrix, shipTexture, shipTextureNormal);
 
 	glutSwapBuffers();
 }
+
 
 void init()
 {
@@ -164,19 +209,25 @@ void init()
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_texture.vert", "shaders/shader_texture.frag");
 
-	textureEarth = Core::LoadTexturePNG("textures/Earth/earth2.png");
-	textureSun = Core::LoadTexturePNG("textures/Sun/sunTex.png");
-	textureMoon = Core::LoadTexturePNG("textures/Moon/moon2.png");
-	textureAsteroid = Core::LoadTexturePNG("textures/Asteroid/asteroid.png");
-	textureMars = Core::LoadTexturePNG("textures/Planet/mars.png");
-	textureVenus = Core::LoadTexturePNG("textures/Planet/venus.png");
+	textureEarth = Core::LoadTexture("textures/Earth/earth2.png");
+	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
+	textureMoon = Core::LoadTexture("textures/Moon/moon2.png");
+	textureAsteroid = Core::LoadTexture("textures/Asteroid/asteroid.png");
+	textureMars = Core::LoadTexture("textures/Planet/mars.png");
+	textureVenus = Core::LoadTexture("textures/Planet/venus.png");
+
+	//textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
+	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
+	//textureAsteroidNormal;
+	textureSunNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
+	textureMoonNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
+	textureMarsNormal = Core::LoadTexture("textures/Planet/mars_normal.png");;
+	shipTextureNormal = Core::LoadTexture("textures/StarSparrow_Normal.png");
 
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
-	sphereContext.initFromOBJ(sphereModel);
-	shipContext.initFromOBJ(shipModel);
 
-	shipTexture = Core::LoadTexturePNG("textures/StarSparrow_Blue.png");
+	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
 
 	static const float astRadius = 6.0;
 	for (int i = 0; i < NUM_ASTEROIDS; i++) {
@@ -200,12 +251,19 @@ void idle()
 	glutPostRedisplay();
 }
 
+void onReshape(int width, int height)
+{
+	frustumScale = (float)width / height;
+
+	glViewport(0, 0, width, height);
+}
+
 int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(200, 200);
-	glutInitWindowSize(600, 600);
+	glutInitWindowSize(1600, 900);
 	glutCreateWindow("OpenGL Pierwszy Program");
 	glewInit();
 
@@ -213,6 +271,7 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyboard);
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
+	glutReshapeFunc(onReshape);
 
 	glutMainLoop();
 

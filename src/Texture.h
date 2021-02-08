@@ -7,8 +7,6 @@ namespace Core
 {
 	GLuint LoadTexture(const char * filepath);
 
-	GLuint LoadTexturePNG(const char* filepath);
-
 	// textureID - identyfikator tekstury otrzymany z funkcji LoadTexture
 	// shaderVariableName - nazwa zmiennej typu 'sampler2D' w shaderze, z ktora ma zostac powiazana tekstura
 	// programID - identyfikator aktualnego programu karty graficznej
