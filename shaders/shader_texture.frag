@@ -1,27 +1,32 @@
 #version 430 core
 
-//uniform vec3 objectColor;
-//uniform vec3 lightDir;
-uniform vec3 lightPos;
-uniform vec3 cameraPos;
 uniform sampler2D textureSampler;
+uniform sampler2D normalSampler;
 
-in vec3 interpNormal;
-in vec3 fragPos;
-in vec2 vertTexCoord;
+in vec2 interpTexCoord;
+in vec3 lightDirTS;
+in vec3 viewDirTS;
+
 
 void main()
 {
-	vec3 lightDir = normalize(lightPos - fragPos);
-	vec3 V = normalize(cameraPos - fragPos);
-	vec3 normal = normalize(interpNormal);
-	vec3 R = reflect(-lightDir, normal);
-
-	vec4 textureColor = texture2D(textureSampler, vertTexCoord);
+	vec3 L = normalize(-lightDirTS);
+	vec3 V = normalize(viewDirTS);
+	vec3 N = texture2D(normalSampler,interpTexCoord).rgb;
+	N = normalize(N*2-1);
+	vec3 R = reflect(-normalize(L), N);
 	
-	float specular = pow(max(0, dot(R, V)), 5);
-	float diffuse = max(0, dot(normal, lightDir));
+	float diffuse = max(0, dot(N, L));
+	
+	float specular_pow = 20;
+	float specular = pow(max(0, dot(R, V)), specular_pow);
+
+	vec3 color = texture2D(textureSampler, interpTexCoord).rgb;
+
+	vec3 lightColor = vec3(1);
+	vec3 shadedColor = color * diffuse + lightColor * specular;
+	
 	float ambient = 0.2;
-	gl_FragColor.rgb = mix(textureColor.xyz, textureColor.xyz * diffuse + vec3(0.2f) * specular, 1.0 - ambient);
-	gl_FragColor.a = 1.0;
+
+	gl_FragColor = vec4(mix(color, shadedColor, 1.0 - ambient), 1.0);
 }

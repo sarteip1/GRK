@@ -57,7 +57,8 @@ glm::vec3 cameraDir;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
-glm::vec3 lightDir = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
+//glm::vec3 lightDir = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
+glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -103,7 +104,8 @@ void drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix,
 {
 	glUseProgram(program);
 
-	glUniform3f(glGetUniformLocation(program, "lightDir"), lightDir.x, lightDir.y, lightDir.z);
+	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	//glUniform3f(glGetUniformLocation(program, "lightDir"), lightDir.x, lightDir.y, lightDir.z);
 	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
@@ -162,10 +164,11 @@ void renderScene()
 		* glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0))
 		* glm::scale(glm::vec3(0.03f));
 
-	glm::mat4 rotate1, rotate2, rotate3, moonRotate;
-	rotate1 = glm::rotate((time / 10.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
-	rotate2 = glm::rotate((time / 12.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
-	rotate3 = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	glm::mat4 rotate1, rotate2, rotate3, rotate4, moonRotate;
+	rotate1 = glm::rotate((time / 100.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate2 = glm::rotate((time / 120.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate3 = glm::rotate((time / 150.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate4 = glm::rotate((time / 6.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
 	moonRotate = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 1.0f, 0.0f));
 
 	glm::mat4 moonScale, sunScale, planetScale1, planetScale2, planetScale3;
@@ -177,12 +180,12 @@ void renderScene()
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 
-	drawObjectTexture(programTexture, &sphereModel, rotate1 * glm::translate(glm::vec3(0, 0, 10)) * planetScale3 * rotate3, textureVenus, textureVenusNormal);
-	drawObjectTexture(programTexture, &sphereModel, rotate2 * glm::translate(glm::vec3(0, 0, -7)) * planetScale1 * rotate3, textureMars, textureMarsNormal);
-	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * planetScale2 * rotate3, textureEarth, textureEarthNormal);
-	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 4)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
-		moonScale, textureMoon, textureMoonNormal);
-	drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMoonNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate1 * glm::translate(glm::vec3(0, 0, -10)) * planetScale3 * rotate4, textureVenus, textureMarsNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate2 * glm::translate(glm::vec3(0, 0, 25)) * planetScale1 * rotate4, textureMars, textureMarsNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 20)) * planetScale2 * rotate4, textureEarth, textureEarthNormal);
+	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 20)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
+		moonScale, textureMoon, textureMarsNormal);
+	drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMarsNormal);
 
 
 	drawObjectTexture(programTexture, &shipModel, shipModelMatrix, shipTexture, shipTextureNormal);
@@ -197,7 +200,7 @@ void init()
 	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_sun_tex.vert", "shaders/shader_sun_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
-	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
+	programTexture = shaderLoader.CreateProgram("shaders/shader_texture.vert", "shaders/shader_texture.frag");
 
 	textureEarth = Core::LoadTexture("textures/Earth/earth2.png");
 	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
@@ -206,7 +209,7 @@ void init()
 	textureMars = Core::LoadTexture("textures/Planet/mars.png");
 	textureVenus = Core::LoadTexture("textures/Planet/venus.png");
 
-	textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
+	//textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
 	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
 	//textureAsteroidNormal;
 	textureSunNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
@@ -247,7 +250,7 @@ int main(int argc, char** argv)
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(200, 200);
-	glutInitWindowSize(800, 450);
+	glutInitWindowSize(1600, 900);
 	glutCreateWindow("OpenGL Pierwszy Program");
 	glewInit();
 
