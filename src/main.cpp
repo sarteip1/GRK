@@ -191,7 +191,7 @@ void renderScene()
 	drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMarsNormal);
 
 	for (int i = 0; i < NUM_ASTEROIDS; i++) {
-		drawObjectTexture(programTexture, sphereContext, glm::translate(asteroidPositions[i]) * glm::scale(glm::vec3(0.2f)), textureAsteroid);
+		drawObjectTexture(programTexture, &sphereModel, glm::translate(asteroidPositions[i]) * glm::scale(glm::vec3(0.2f)), textureAsteroid,textureAsteroidNormal);
 	}
 
 
@@ -218,7 +218,7 @@ void init()
 
 	//textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
 	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
-	//textureAsteroidNormal;
+	textureAsteroidNormal = Core::LoadTexture("textures/Asteroid/asteroid_normals.png");
 	textureSunNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
 	textureMoonNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
 	textureMarsNormal = Core::LoadTexture("textures/Planet/mars_normal.png");;
