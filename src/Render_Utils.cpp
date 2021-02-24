@@ -4,9 +4,7 @@
 
 #include "glew.h"
 #include "freeglut.h"
-
-
-
+#include "Texture.h"
 
 void Core::RenderContext::initFromOBJ(obj::Model& model)
 {
@@ -184,4 +182,18 @@ void Core::DrawModel(obj::Model* model)
 
     unsigned short* indices = &model->faces["default"][0];
     glDrawElements(GL_TRIANGLES, model->faces["default"].size(), GL_UNSIGNED_SHORT, indices);
+}
+
+void Core::drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix, GLuint tex, GLuint normalmapId, glm::mat4 cameraMatrix, glm::mat4 perspectiveMatrix, glm::vec3 cameraPos, glm::vec3 lightPos)
+{
+	glUseProgram(program);
+	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	Core::SetActiveTexture(tex, "textureSampler", program, 0);
+	Core::SetActiveTexture(normalmapId, "normalSampler", program, 1);
+	Core::DrawModel(model);
+	glUseProgram(0);
 }
