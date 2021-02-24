@@ -5,6 +5,8 @@
 #include <iostream>
 #include <cmath>
 #include <ctime>
+#include <stdlib.h>
+#include <cstdio>
 
 #include "Skybox.h"
 
@@ -24,6 +26,7 @@
 #include <assimp/postprocess.h>
 #include "Physics.h"
 #include "Texture.h"
+#include "CustomCamera.h"
 
 float frustumScale = 1.f;
 Physics pxScene(9.8);
@@ -36,16 +39,23 @@ obj::Model sphereModel, shipModel;
 Core::Shader_Loader shaderLoader;
 Core::RenderContext sphereContext, shipContext;
 float cameraAngle = 0;
-glm::vec3 cameraPos = glm::vec3(-6, 0, 0), cameraDir, lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 cameraPos = glm::vec3(-6, 0, 0), cameraDir, lightPos = glm::vec3(0.0f, 0.0f, 0.0f), cameraSide;
 glm::mat4 cameraMatrix, perspectiveMatrix;
 struct Renderable {
-    obj::Model *model;
+    //obj::Model *model;
 	Core::RenderContext* context;
     glm::mat4 modelMatrix;
     GLuint textureId;
 	GLuint textureNormal;
 };
 Renderable* ship;
+
+float horizontalDistance = 6.0f; // CustomCamera variable
+float verticalDistance = 0.8f; // CustomCamera variable
+float angleAroundPlayer; //
+CustomCamera customCamera(cameraPos);
+float aspectRatio = 1.f;
+float fov = 65.0f;
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -55,8 +65,8 @@ void keyboard(unsigned char key, int x, int y)
 	{
 	case 'z': cameraAngle -= angleSpeed; break;
 	case 'x': cameraAngle += angleSpeed; break;
-	case 'w': shipBody->addForce(PxVec3(cameraDir.x * -1 * 1000.0f, 0, cameraDir.z * -1 * 1000.0f), PxForceMode::eFORCE, true); break;
-	case 's': cameraPos -= cameraDir * moveSpeed; break;
+	case 'w': shipBody->addForce(PxVec3(cameraDir.x * 10.0f, 0, cameraDir.z * 10.0f), PxForceMode::eFORCE, true); break;
+	case 's': shipBody->addForce(PxVec3(cameraDir.x * 10.0f, 0, cameraDir.z * -10.0f), PxForceMode::eFORCE, true); break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
@@ -64,12 +74,43 @@ void keyboard(unsigned char key, int x, int y)
 	}
 }
 
-glm::mat4 createCameraMatrix()
-{
-	cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
-	glm::vec3 up = glm::vec3(0, 1, 0);
+void initPhysicsScene(){
+	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 0));
+    shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
+    PxShape* shipShape = pxScene.physics->createShape(PxBoxGeometry(1.25f, 0.3f, 1.25f), *shipMaterial);
+    shipBody->attachShape(*shipShape);
+    shipShape->release();
+    shipBody->setMass(5);
+    shipBody->setMassSpaceInertiaTensor(PxVec3(0.f, 250.0f, 0.f));
+    //spaceshipBody->setRigidDynamicLockFlags(PxRigidDynamicLockFlag::eLOCK_LINEAR_Y | PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z | PxRigidDynamicLockFlag::eLOCK_ANGULAR_X);
+    shipBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+    shipBody->userData = ship;
 
-	return Core::createViewMatrix(cameraPos, cameraDir, up);
+    pxScene.scene->addActor(*shipBody);
+}
+
+void initRenderables(){
+	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
+	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
+	shipTextureNormal = Core::LoadTexture("textures/StarSparrow_Normal.png");
+	sphereModel = obj::loadModelFromFile("models/sphere.obj");
+	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
+	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
+	shipContext.initFromOBJ(shipModel);
+	ship = new Renderable();
+	ship->textureId = shipTexture;
+	ship->textureNormal = shipTextureNormal;
+	ship->context = &shipContext;
+}
+
+glm::mat4 createCameraMatrix(PxRigidActor* actor, float angleAroundPlayer) {
+
+    glm::mat4 cameraMatrix = customCamera.createCustomCameraMatrix(actor, horizontalDistance, verticalDistance, angleAroundPlayer);
+    cameraDir = customCamera.getCameraDir();
+    cameraSide = customCamera.getCameraSide();
+    cameraPos = customCamera.getCameraPos();
+    return cameraMatrix;
+
 }
 
 void updateTransforms()
@@ -111,7 +152,16 @@ void updateTransforms()
 
 void renderScene()
 {
-	cameraMatrix = createCameraMatrix();
+	PxU32 nbActors = pxScene.scene->getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC);
+    if (nbActors) {
+        // CAMERA WILL BE ATTACHED TO THE LAST ACTOR ADDED TO THE PHYSX SCENE!
+        std::vector<PxRigidActor*> actors(nbActors);
+        pxScene.scene->getActors(PxActorTypeFlag::eRIGID_DYNAMIC, (PxActor**)&actors[0], nbActors);
+        PxRigidActor* actor = actors.back();
+
+        cameraMatrix = createCameraMatrix(actor, angleAroundPlayer);
+    }
+	perspectiveMatrix = customCamera.createPerspectiveMatrix(0.1f, 10000.f, fov, aspectRatio);
 	perspectiveMatrix = Core::createPerspectiveMatrix(0.1f, 100.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
@@ -134,26 +184,9 @@ void renderScene()
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 	//updateTransforms();
 	Core::drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMarsNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
-	Core::drawObjectTexture(programTexture, ship->model, ship->modelMatrix, ship->textureId, ship->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &shipModel, ship->modelMatrix, ship->textureId, ship->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	glutSwapBuffers();
 }
-
-void initPhysicsScene()
-{
-	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 0));
-    shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
-    PxShape* shipShape = pxScene.physics->createShape(PxBoxGeometry(1.25f, 0.3f, 1.25f), *shipMaterial);
-    shipBody->attachShape(*shipShape);
-    shipShape->release();
-    shipBody->setMass(5000.0f);
-    shipBody->setMassSpaceInertiaTensor(PxVec3(0.f, 250.0f, 0.f));
-    //spaceshipBody->setRigidDynamicLockFlags(PxRigidDynamicLockFlag::eLOCK_LINEAR_Y | PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z | PxRigidDynamicLockFlag::eLOCK_ANGULAR_X);
-    shipBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
-    shipBody->userData = ship;
-
-    pxScene.scene->addActor(*shipBody);
-}
-
 
 void init()
 {
@@ -162,21 +195,9 @@ void init()
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_texture.vert", "shaders/shader_texture.frag");
 
-	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
-	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
-	shipTextureNormal = Core::LoadTexture("textures/StarSparrow_Normal.png");
-	sphereModel = obj::loadModelFromFile("models/sphere.obj");
-	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
-	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
-	shipContext.initFromOBJ(shipModel);
-	ship = new Renderable();
-	ship->model = &shipModel;
-	ship->textureId = shipTexture;
-	ship->textureNormal = shipTextureNormal;
-	ship->context = &shipContext;
-
-	initSkybox();
+	initRenderables();
 	initPhysicsScene();
+	initSkybox();
 }
 
 void shutdown()
