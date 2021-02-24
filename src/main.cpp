@@ -17,7 +17,6 @@
 
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
-#include "Camera.h"
 
 #include "Box.cpp"
 
@@ -161,8 +160,7 @@ void renderScene()
 
         cameraMatrix = createCameraMatrix(actor, angleAroundPlayer);
     }
-	perspectiveMatrix = customCamera.createPerspectiveMatrix(0.1f, 10000.f, fov, aspectRatio);
-	perspectiveMatrix = Core::createPerspectiveMatrix(0.1f, 100.0f, frustumScale);
+	perspectiveMatrix = customCamera.createPerspectiveMatrix(0.1f, 10000.f, fov, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
 	pxScene.step(physicsStepTime);
