@@ -81,7 +81,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>$(SolutionDir)dependencies\freeglut\lib;$(SolutionDir)dependencies\glew-2.0.0\lib\Release\Win32;$(SolutionDir)dependencies\assimp;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)dependencies\freeglut\lib;$(SolutionDir)dependencies\glew-2.0.0\lib\Release\Win32;$(SolutionDir)dependencies\assimp;$(SolutionDir)dependencies\physx-4.1\lib;$(LibraryPath)</LibraryPath>
     <IncludePath>$(SolutionDir)dependencies\freeglut\include\GL;$(SolutionDir)dependencies\glew-2.0.0\include\GL;$(SolutionDir)dependencies\glm;$(SolutionDir)dependencies\assimp\include;$(IncludePath)</IncludePath>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>

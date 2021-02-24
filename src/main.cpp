@@ -63,12 +63,13 @@ void keyboard(unsigned char key, int x, int y)
 	{
 	case 'z': angleAroundPlayer -= angleSpeed; break;
 	case 'x': angleAroundPlayer += angleSpeed; break;
-	case 'w': shipBody->addForce(PxVec3(cameraDir.x * 10.0f, 0, cameraDir.z * 10.0f), PxForceMode::eFORCE, true); break;
+	case 'w': shipBody->addForce(PxVec3(cameraDir.x * -10.0f, 0, cameraDir.z * 10.0f), PxForceMode::eFORCE, true); break;
 	case 's': shipBody->addForce(PxVec3(cameraDir.x * 10.0f, 0, cameraDir.z * -10.0f), PxForceMode::eFORCE, true); break;
-	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
-	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	case 'd': shipBody->addForce(PxVec3(cameraSide.x * 5.0f, 0, cameraSide.z * -5.0f), PxForceMode::eFORCE, true); break;
+	case 'a': shipBody->addForce(PxVec3(cameraSide.x * -5.0f, 0, cameraSide.z * 5.0f), PxForceMode::eFORCE, true); break;
+	case 'e': shipBody->addTorque(PxVec3(0, -100.f, 0), PxForceMode::eFORCE, true); break;
+	case 'q': shipBody->addTorque(PxVec3(0, 100.f, 0), PxForceMode::eFORCE, true); break;
+	case ' ': shipBody->setAngularVelocity(PxVec3(0, 0, 0)); break;
 	}
 }
 
@@ -141,7 +142,7 @@ void updateTransforms()
                 c2.x, c2.y, c2.z, c2.w,
                 c3.x, c3.y, c3.z, c3.w);
             
-            if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.08f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
+            if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.2f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
 
             renderable->modelMatrix = modelMatrix;
         }
@@ -166,7 +167,7 @@ void renderScene()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
-	glm::mat4 sunScale = glm::scale(glm::vec3(1.5, 1.5, 1.5));
+	glm::mat4 sunScale = glm::scale(glm::vec3(15, 15, 15));
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 	updateTransforms();
