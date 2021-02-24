@@ -53,17 +53,16 @@ float horizontalDistance = 6.0f; // CustomCamera variable
 float verticalDistance = 0.8f; // CustomCamera variable
 float angleAroundPlayer; //
 CustomCamera customCamera(cameraPos);
-float aspectRatio = 1.f;
-float fov = 65.0f;
+float fov = 70.0f;
 
 void keyboard(unsigned char key, int x, int y)
 {
-	float angleSpeed = 0.1f;
-	float moveSpeed = 0.1f;
+	float angleSpeed = 1.0f;
+	float moveSpeed = 1.0f;
 	switch (key)
 	{
-	case 'z': cameraAngle -= angleSpeed; break;
-	case 'x': cameraAngle += angleSpeed; break;
+	case 'z': angleAroundPlayer -= angleSpeed; break;
+	case 'x': angleAroundPlayer += angleSpeed; break;
 	case 'w': shipBody->addForce(PxVec3(cameraDir.x * 10.0f, 0, cameraDir.z * 10.0f), PxForceMode::eFORCE, true); break;
 	case 's': shipBody->addForce(PxVec3(cameraDir.x * 10.0f, 0, cameraDir.z * -10.0f), PxForceMode::eFORCE, true); break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
@@ -74,7 +73,7 @@ void keyboard(unsigned char key, int x, int y)
 }
 
 void initPhysicsScene(){
-	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 0));
+	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 10));
     shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
     PxShape* shipShape = pxScene.physics->createShape(PxBoxGeometry(1.25f, 0.3f, 1.25f), *shipMaterial);
     shipBody->attachShape(*shipShape);
@@ -167,20 +166,10 @@ void renderScene()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
-
-	glUseProgram(program);
-
-	glm::mat4 shipModelMatrix =
-		glm::translate(cameraPos + cameraDir * 0.85f + glm::vec3(0, -0.25f, 0))
-		* glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0))
-		* glm::scale(glm::vec3(0.03f));
-
-	ship->modelMatrix = shipModelMatrix;
-
 	glm::mat4 sunScale = glm::scale(glm::vec3(1.5, 1.5, 1.5));
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-	//updateTransforms();
+	updateTransforms();
 	Core::drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMarsNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	Core::drawObjectTexture(programTexture, &shipModel, ship->modelMatrix, ship->textureId, ship->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	glutSwapBuffers();
