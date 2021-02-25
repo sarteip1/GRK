@@ -31,23 +31,22 @@ float frustumScale = 1.f;
 Physics pxScene(9.8);
 const double physicsStepTime = 1.f / 90.0f;
 double physicsTimeToProcess = 0;
-PxRigidDynamic *shipBody = nullptr;
-PxMaterial* shipMaterial = nullptr;
+PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr;
+PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr;
 GLuint program, programSun, programSkybox, programColor, programTexture, textureEarth, textureEarthNormal, textureAsteroid, textureAsteroidNormal, textureSun, textureSunNormal, textureMoon, textureMoonNormal, textureMars, textureMarsNormal, textureVenus, textureVenusNormal, shipTexture, shipTextureNormal;
 obj::Model sphereModel, shipModel;
 Core::Shader_Loader shaderLoader;
-Core::RenderContext sphereContext, shipContext;
+Core::RenderContext sphereContext, shipContext, sunContext;
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0), cameraDir, lightPos = glm::vec3(0.0f, 0.0f, 0.0f), cameraSide;
 glm::mat4 cameraMatrix, perspectiveMatrix;
 struct Renderable {
-    //obj::Model *model;
 	Core::RenderContext* context;
     glm::mat4 modelMatrix;
     GLuint textureId;
 	GLuint textureNormal;
 };
-Renderable* ship;
+Renderable *ship, *sun;
 
 float horizontalDistance = 6.0f; // CustomCamera variable
 float verticalDistance = 0.8f; // CustomCamera variable
@@ -74,6 +73,16 @@ void keyboard(unsigned char key, int x, int y)
 }
 
 void initPhysicsScene(){
+	sunMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	sunBody = pxScene.physics->createRigidDynamic(PxTransform(0,0,0));
+	PxShape *sunShape = pxScene.physics->createShape(PxSphereGeometry(20), *sunMaterial);
+	sunBody->attachShape(*sunShape);
+	sunShape->release();
+	sunBody->setMass(10);
+	sunBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	sunBody->userData = sun;
+	sunBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*sunBody);
 	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 10));
     shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
     PxShape* shipShape = pxScene.physics->createShape(PxBoxGeometry(1.25f, 0.3f, 1.25f), *shipMaterial);
@@ -96,6 +105,11 @@ void initRenderables(){
 	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
 	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
 	shipContext.initFromOBJ(shipModel);
+	sunContext.initFromOBJ(sphereModel);
+	sun = new Renderable();
+	sun->textureId = textureSun;
+	sun->textureNormal = textureEarthNormal;
+	sun->context = &sunContext;
 	ship = new Renderable();
 	ship->textureId = shipTexture;
 	ship->textureNormal = shipTextureNormal;
@@ -142,6 +156,7 @@ void updateTransforms()
                 c2.x, c2.y, c2.z, c2.w,
                 c3.x, c3.y, c3.z, c3.w);
             
+			if (actor->userData == sun) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
             if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.2f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
 
             renderable->modelMatrix = modelMatrix;
@@ -171,7 +186,7 @@ void renderScene()
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 	updateTransforms();
-	Core::drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMarsNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programSun, &sphereModel, sun->modelMatrix, sun->textureId, sun->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	Core::drawObjectTexture(programTexture, &shipModel, ship->modelMatrix, ship->textureId, ship->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	glutSwapBuffers();
 }
