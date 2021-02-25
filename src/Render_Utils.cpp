@@ -197,3 +197,16 @@ void Core::drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelM
 	Core::DrawModel(model);
 	glUseProgram(0);
 }
+
+void Core::drawObjectTextureSun(GLuint program, obj::Model* model, glm::mat4 modelMatrix, GLuint tex,glm::mat4 cameraMatrix, glm::mat4 perspectiveMatrix, glm::vec3 cameraPos, glm::vec3 lightPos)
+{
+    glUseProgram(program);
+    glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+    glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+    glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
+    glUniformMatrix4fv(glGetUniformLocation(program, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
+    glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+    Core::SetActiveTexture(tex, "textureSampler", program, 0);
+    Core::DrawModel(model);
+    glUseProgram(0);
+}

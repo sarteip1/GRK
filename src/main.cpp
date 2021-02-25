@@ -27,13 +27,21 @@
 #include "Texture.h"
 #include "CustomCamera.h"
 
+GLuint program, programSun, programSkybox, programColor, programTexture;
+GLuint textureEarth, textureEarthNormal;
+GLuint textureAsteroid, textureAsteroidNormal;
+GLuint textureSun, textureSunNormal;
+GLuint textureMoon, textureMoonNormal;
+GLuint textureMars, textureMarsNormal;
+GLuint textureVenus, textureVenusNormal;
+GLuint shipTexture, shipTextureNormal;
+
 float frustumScale = 1.f;
 Physics pxScene(9.8);
 const double physicsStepTime = 1.f / 90.0f;
 double physicsTimeToProcess = 0;
 PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr;
 PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr;
-GLuint program, programSun, programSkybox, programColor, programTexture, textureEarth, textureEarthNormal, textureAsteroid, textureAsteroidNormal, textureSun, textureSunNormal, textureMoon, textureMoonNormal, textureMars, textureMarsNormal, textureVenus, textureVenusNormal, shipTexture, shipTextureNormal;
 obj::Model sphereModel, shipModel;
 Core::Shader_Loader shaderLoader;
 Core::RenderContext sphereContext, shipContext, sunContext;
@@ -46,7 +54,7 @@ struct Renderable {
     GLuint textureId;
 	GLuint textureNormal;
 };
-Renderable *ship, *sun;
+Renderable *ship, *sun, *earth, *moon, *asteroids, *mars, *venus;
 
 float horizontalDistance = 6.0f; // CustomCamera variable
 float verticalDistance = 0.8f; // CustomCamera variable
@@ -99,17 +107,50 @@ void initPhysicsScene(){
 
 void initRenderables(){
 	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
+	textureEarth = Core::LoadTexture("textures/Earth/earth2.png");
 	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
+	textureMoon = Core::LoadTexture("textures/Moon/moon2.png");
+	textureMoonNormal = Core::LoadTexture("textures/Moon/moon_normal.png");
+	textureAsteroid = Core::LoadTexture("textures/Asteroid/asteroid.png");
+	textureAsteroidNormal = Core::LoadTexture("textures/Asteroid/asteroid_normals.png");
+	textureMars = Core::LoadTexture("textures/Planet/mars.png");
+	textureMarsNormal = Core::LoadTexture("textures/Planet/mars_normal.png");;
+	textureVenus = Core::LoadTexture("textures/Planet/venus.png");
+	//textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
+
 	shipTextureNormal = Core::LoadTexture("textures/StarSparrow_Normal.png");
+	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
+	
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
-	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
 	shipContext.initFromOBJ(shipModel);
 	sunContext.initFromOBJ(sphereModel);
+
 	sun = new Renderable();
 	sun->textureId = textureSun;
 	sun->textureNormal = textureEarthNormal;
 	sun->context = &sunContext;
+	//
+	//earth = new Renderable();
+	//earth->textureId = textureEarth;
+	//earth->textureNormal = textureEarthNormal;
+	//earth->context = &sphereContext;
+	//
+	//moon = new Renderable();
+	//moon->textureId = textureMoon;
+	//moon->textureNormal = textureMoonNormal;
+	//moon->context = &sphereContext;
+	//
+	//mars = new Renderable();
+	//mars->textureId = textureMars;
+	//mars->textureNormal = textureMarsNormal;
+	//mars->context = &sphereContext;
+	//
+	//venus = new Renderable();
+	//venus->textureId = textureVenus;
+	//venus->textureNormal = textureMarsNormal;
+	//venus->context = &sphereContext;
+	//
 	ship = new Renderable();
 	ship->textureId = shipTexture;
 	ship->textureNormal = shipTextureNormal;
@@ -186,7 +227,12 @@ void renderScene()
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 	updateTransforms();
-	Core::drawObjectTexture(programSun, &sphereModel, sun->modelMatrix, sun->textureId, sun->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTextureSun(programSun, &sphereModel, sun->modelMatrix, sun->textureId, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	//Core::drawObjectTexture(programTexture, &sphereModel, earth->modelMatrix, earth->textureId, earth->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	//Core::drawObjectTexture(programTexture, &sphereModel, moon->modelMatrix, moon->textureId, moon->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	//Core::drawObjectTexture(programTexture, &sphereModel, mars->modelMatrix, mars->textureId, mars->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	//Core::drawObjectTexture(programTexture, &sphereModel, venus->modelMatrix, venus->textureId, venus->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	//Core::drawObjectTexture(programTexture, &sphereModel, asteroids->modelMatrix, asteroids->textureId, asteroids->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	Core::drawObjectTexture(programTexture, &shipModel, ship->modelMatrix, ship->textureId, ship->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	glutSwapBuffers();
 }
@@ -205,7 +251,9 @@ void init()
 
 void shutdown()
 {
-	shaderLoader.DeleteProgram(programSun); shaderLoader.DeleteProgram(programSkybox); shaderLoader.DeleteProgram(programTexture);
+	shaderLoader.DeleteProgram(programSun);
+	shaderLoader.DeleteProgram(programSkybox);
+	shaderLoader.DeleteProgram(programTexture);
 }
 
 void idle()
