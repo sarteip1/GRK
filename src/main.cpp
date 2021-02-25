@@ -40,8 +40,8 @@ float frustumScale = 1.f;
 Physics pxScene(9.8);
 const double physicsStepTime = 1.f / 90.0f;
 double physicsTimeToProcess = 0;
-PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr;
-PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr;
+PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr, *earthBody = nullptr;
+PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr, *earthMaterial = nullptr;
 obj::Model sphereModel, shipModel;
 Core::Shader_Loader shaderLoader;
 Core::RenderContext sphereContext, shipContext, sunContext;
@@ -86,12 +86,25 @@ void initPhysicsScene(){
 	PxShape *sunShape = pxScene.physics->createShape(PxSphereGeometry(10), *sunMaterial);
 	sunBody->attachShape(*sunShape);
 	sunShape->release();
-	sunBody->setMass(10);
+	sunBody->setMass(10000);
 	sunBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
 	sunBody->userData = sun;
 	sunBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
 	pxScene.scene->addActor(*sunBody);
-	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 10));
+
+	earthMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	earthBody = pxScene.physics->createRigidDynamic(PxTransform(0,0,50));
+	PxShape *earthShape = pxScene.physics->createShape(PxSphereGeometry(10), *earthMaterial);
+	earthBody->attachShape(*earthShape);
+	earthShape->release();
+	earthBody->setMass(1000);
+	earthBody->setAngularVelocity(PxVec3(0 ,1, 0));
+	earthBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	earthBody->userData = earth;
+	earthBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*earthBody);
+
+	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 80));
     shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
     PxShape* shipShape = pxScene.physics->createShape(PxBoxGeometry(1.25f, 0.3f, 1.25f), *shipMaterial);
     shipBody->attachShape(*shipShape);
@@ -130,11 +143,11 @@ void initRenderables(){
 	sun->textureId = textureSun;
 	sun->textureNormal = textureEarthNormal;
 	sun->context = &sunContext;
-	//
-	//earth = new Renderable();
-	//earth->textureId = textureEarth;
-	//earth->textureNormal = textureEarthNormal;
-	//earth->context = &sphereContext;
+	
+	earth = new Renderable();
+	earth->textureId = textureEarth;
+	earth->textureNormal = textureEarthNormal;
+	earth->context = &sphereContext;
 	//
 	//moon = new Renderable();
 	//moon->textureId = textureMoon;
@@ -197,6 +210,13 @@ void updateTransforms()
                 c2.x, c2.y, c2.z, c2.w,
                 c3.x, c3.y, c3.z, c3.w);
             
+			if (actor->userData == earth) {
+				PxTransform earthPos = earthBody->getGlobalPose();
+				float xVel = -(earthPos.p.x / (earthPos.p.x + earthPos.p.z) - 1);
+				float zVel = earthPos.p.z / (earthPos.p.x + earthPos.p.z) - 1;
+				earthBody->setLinearVelocity(PxVec3(10 * xVel, 0, 10 * zVel));
+				modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
+			}
 			if (actor->userData == sun) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
             if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.2f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
 
@@ -228,7 +248,7 @@ void renderScene()
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 	updateTransforms();
 	Core::drawObjectTextureSun(programSun, &sphereModel, sun->modelMatrix, sun->textureId, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
-	//Core::drawObjectTexture(programTexture, &sphereModel, earth->modelMatrix, earth->textureId, earth->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, earth->modelMatrix, earth->textureId, earth->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	//Core::drawObjectTexture(programTexture, &sphereModel, moon->modelMatrix, moon->textureId, moon->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	//Core::drawObjectTexture(programTexture, &sphereModel, mars->modelMatrix, mars->textureId, mars->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	//Core::drawObjectTexture(programTexture, &sphereModel, venus->modelMatrix, venus->textureId, venus->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
