@@ -75,7 +75,7 @@ void keyboard(unsigned char key, int x, int y)
 void initPhysicsScene(){
 	sunMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
 	sunBody = pxScene.physics->createRigidDynamic(PxTransform(0,0,0));
-	PxShape *sunShape = pxScene.physics->createShape(PxSphereGeometry(20), *sunMaterial);
+	PxShape *sunShape = pxScene.physics->createShape(PxSphereGeometry(10), *sunMaterial);
 	sunBody->attachShape(*sunShape);
 	sunShape->release();
 	sunBody->setMass(10);
