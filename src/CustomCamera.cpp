@@ -77,6 +77,12 @@ glm::mat4 CustomCamera::createCustomCameraMatrix(PxRigidActor* actor, float hori
     return glm::lookAt(cameraPos, spaceshipPosition, up);
 }
 
+glm::mat4 CustomCamera::createViewMatrixLookAt(glm::vec3 position, glm::vec3 targetPosition, glm::vec3 up)
+{
+    glm::mat4 view = glm::lookAt(position, targetPosition, up);
+    return view;
+}
+
 glm::vec3 CustomCamera::getCameraPos() { return cameraPos; }
 
 glm::vec3 CustomCamera::getCameraDir() { return cameraDir; }
