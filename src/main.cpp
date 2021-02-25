@@ -148,22 +148,22 @@ void initRenderables(){
 	earth->textureId = textureEarth;
 	earth->textureNormal = textureEarthNormal;
 	earth->context = &sphereContext;
-	//
-	//moon = new Renderable();
-	//moon->textureId = textureMoon;
-	//moon->textureNormal = textureMoonNormal;
-	//moon->context = &sphereContext;
-	//
-	//mars = new Renderable();
-	//mars->textureId = textureMars;
-	//mars->textureNormal = textureMarsNormal;
-	//mars->context = &sphereContext;
-	//
-	//venus = new Renderable();
-	//venus->textureId = textureVenus;
-	//venus->textureNormal = textureMarsNormal;
-	//venus->context = &sphereContext;
-	//
+	
+	moon = new Renderable();
+	moon->textureId = textureMoon;
+	moon->textureNormal = textureMoonNormal;
+	moon->context = &sphereContext;
+	
+	mars = new Renderable();
+	mars->textureId = textureMars;
+	mars->textureNormal = textureMarsNormal;
+	mars->context = &sphereContext;
+	
+	venus = new Renderable();
+	venus->textureId = textureVenus;
+	venus->textureNormal = textureMarsNormal;
+	venus->context = &sphereContext;
+	
 	ship = new Renderable();
 	ship->textureId = shipTexture;
 	ship->textureNormal = shipTextureNormal;
