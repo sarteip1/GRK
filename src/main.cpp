@@ -40,8 +40,8 @@ float frustumScale = 1.f;
 Physics pxScene(9.8);
 const double physicsStepTime = 1.f / 90.0f;
 double physicsTimeToProcess = 0;
-PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr, *earthBody = nullptr;
-PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr, *earthMaterial = nullptr;
+PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr, *earthBody = nullptr, *moonBody = nullptr;
+PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr, *earthMaterial = nullptr, *moonMaterial = nullptr;
 obj::Model sphereModel, shipModel;
 Core::Shader_Loader shaderLoader;
 Core::RenderContext sphereContext, shipContext, sunContext;
@@ -70,10 +70,10 @@ void keyboard(unsigned char key, int x, int y)
 	{
 	case 'z': angleAroundPlayer -= angleSpeed; break;
 	case 'x': angleAroundPlayer += angleSpeed; break;
-	case 'w': shipBody->addForce(PxVec3(cameraDir.x * -10.0f, 0, cameraDir.z * 10.0f), PxForceMode::eFORCE, true); break;
-	case 's': shipBody->addForce(PxVec3(cameraDir.x * 10.0f, 0, cameraDir.z * -10.0f), PxForceMode::eFORCE, true); break;
-	case 'd': shipBody->addForce(PxVec3(cameraSide.x * 5.0f, 0, cameraSide.z * -5.0f), PxForceMode::eFORCE, true); break;
-	case 'a': shipBody->addForce(PxVec3(cameraSide.x * -5.0f, 0, cameraSide.z * 5.0f), PxForceMode::eFORCE, true); break;
+	case 'w': shipBody->addForce(PxVec3(cameraDir.x * -50.0f, 0, cameraDir.z * 50.0f), PxForceMode::eFORCE, true); break;
+	case 's': shipBody->addForce(PxVec3(cameraDir.x * 50.0f, 0, cameraDir.z * -50.0f), PxForceMode::eFORCE, true); break;
+	case 'd': shipBody->addForce(PxVec3(cameraSide.x * 25.0f, 0, cameraSide.z * -25.0f), PxForceMode::eFORCE, true); break;
+	case 'a': shipBody->addForce(PxVec3(cameraSide.x * -25.0f, 0, cameraSide.z * 25.0f), PxForceMode::eFORCE, true); break;
 	case 'e': shipBody->addTorque(PxVec3(0, -100.f, 0), PxForceMode::eFORCE, true); break;
 	case 'q': shipBody->addTorque(PxVec3(0, 100.f, 0), PxForceMode::eFORCE, true); break;
 	case ' ': shipBody->setAngularVelocity(PxVec3(0, 0, 0)); break;
@@ -103,6 +103,18 @@ void initPhysicsScene(){
 	earthBody->userData = earth;
 	earthBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
 	pxScene.scene->addActor(*earthBody);
+
+	moonMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	moonBody = pxScene.physics->createRigidDynamic(PxTransform(50,0,50));
+	PxShape *moonShape = pxScene.physics->createShape(PxSphereGeometry(1), *moonMaterial);
+	moonBody->attachShape(*moonShape);
+	moonShape->release();
+	moonBody->setMass(1000);
+	moonBody->setAngularVelocity(PxVec3(0 ,1, 0));
+	moonBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	moonBody->userData = moon;
+	moonBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*moonBody);
 
 	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 80));
     shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
@@ -210,13 +222,7 @@ void updateTransforms()
                 c2.x, c2.y, c2.z, c2.w,
                 c3.x, c3.y, c3.z, c3.w);
             
-			if (actor->userData == earth) {
-				PxTransform earthPos = earthBody->getGlobalPose();
-				float xVel = -(earthPos.p.x / (earthPos.p.x + earthPos.p.z) - 1);
-				float zVel = earthPos.p.z / (earthPos.p.x + earthPos.p.z) - 1;
-				earthBody->setLinearVelocity(PxVec3(10 * xVel, 0, 10 * zVel));
-				modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
-			}
+			if (actor->userData == earth) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
 			if (actor->userData == sun) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
             if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.2f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
 
@@ -243,15 +249,41 @@ void renderScene()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
-	glm::mat4 sunScale = glm::scale(glm::vec3(15, 15, 15));
+
+	glm::mat4 rotate1, rotate2, rotate3, rotate4, moonRotate;
+	rotate1 = glm::rotate((time / 100.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate2 = glm::rotate((time / 120.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate3 = glm::rotate((time / 150.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate4 = glm::rotate((time / 6.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	moonRotate = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	glm::mat4 moonScale, sunScale, planetScale1, planetScale2, planetScale3;
+	moonScale = glm::scale(glm::vec3(15, 15, 15));
+	sunScale = glm::scale(glm::vec3(1.5, 1.5, 1.5));
+	planetScale1 = glm::scale(glm::vec3(0.8, 0.8, 0.8));
+	planetScale2 = glm::scale(glm::vec3(50.0, 50.0, 50.0));
+	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
+
+	updateTransforms();
+
+	glm::mat4 earthPos = rotate3 * planetScale2;
+	glm::mat4 moonPos = moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) * moonScale;
+
+	std::cout << moonPos[0].x << " " << moonPos[0].y << " " << moonPos[0].z << '\n';
+	earthBody->setGlobalPose(PxTransform(earthPos[0].x, earthPos[0].y, earthPos[0].z));
+	moonBody->setGlobalPose(PxTransform(earthPos[0].x + moonPos[0].x, earthPos[0].y + moonPos[0].y, earthPos[0].z + moonPos[0].z));
+	//earth->modelMatrix = rotate3 * glm::translate(glm::vec3(0, 0, 20)) * rotate4;
+	//moon->modelMatrix =  rotate3 * glm::translate(glm::vec3(0, 0, 20)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) * moonScale;
+	mars->modelMatrix = rotate2 * glm::translate(glm::vec3(0, 0, 25)) * planetScale1 * rotate4;
+	venus->modelMatrix = rotate1 * glm::translate(glm::vec3(0, 0, -10)) * planetScale3 * rotate4;
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-	updateTransforms();
+	
 	Core::drawObjectTextureSun(programSun, &sphereModel, sun->modelMatrix, sun->textureId, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	Core::drawObjectTexture(programTexture, &sphereModel, earth->modelMatrix, earth->textureId, earth->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
-	//Core::drawObjectTexture(programTexture, &sphereModel, moon->modelMatrix, moon->textureId, moon->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
-	//Core::drawObjectTexture(programTexture, &sphereModel, mars->modelMatrix, mars->textureId, mars->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
-	//Core::drawObjectTexture(programTexture, &sphereModel, venus->modelMatrix, venus->textureId, venus->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, moon->modelMatrix, moon->textureId, moon->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, mars->modelMatrix, mars->textureId, mars->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, venus->modelMatrix, venus->textureId, venus->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	//Core::drawObjectTexture(programTexture, &sphereModel, asteroids->modelMatrix, asteroids->textureId, asteroids->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	Core::drawObjectTexture(programTexture, &shipModel, ship->modelMatrix, ship->textureId, ship->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	glutSwapBuffers();
