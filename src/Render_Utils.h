@@ -81,4 +81,8 @@ namespace Core
 	void DrawContext(RenderContext& context);
 
 	void DrawModel(obj::Model* model);
+
+	void drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix, GLuint tex, GLuint normalmapId, glm::mat4 cameraMatrix, glm::mat4 perspectiveMatrix, glm::vec3 cameraPos, glm::vec3 lightPos);
+	
+	void drawObjectTextureSun(GLuint program, obj::Model* model, glm::mat4 modelMatrix, GLuint tex, glm::mat4 cameraMatrix, glm::mat4 perspectiveMatrix, glm::vec3 cameraPos, glm::vec3 lightPos);
 }

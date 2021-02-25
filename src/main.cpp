@@ -5,6 +5,8 @@
 #include <iostream>
 #include <cmath>
 #include <ctime>
+#include <stdlib.h>
+#include <cstdio>
 
 #include "Skybox.h"
 
@@ -15,25 +17,17 @@
 
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
-#include "Camera.h"
 
 #include "Box.cpp"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include "Physics.h"
 #include "Texture.h"
+#include "CustomCamera.h"
 
-float frustumScale = 1.f;
-
-//programs
-GLuint program;
-GLuint programSun;
-GLuint programSkybox;
-GLuint programColor;
-GLuint programTexture;
-
-//Textures
+GLuint program, programSun, programSkybox, programColor, programTexture;
 GLuint textureEarth, textureEarthNormal;
 GLuint textureAsteroid, textureAsteroidNormal;
 GLuint textureSun, textureSunNormal;
@@ -42,130 +36,219 @@ GLuint textureMars, textureMarsNormal;
 GLuint textureVenus, textureVenusNormal;
 GLuint shipTexture, shipTextureNormal;
 
-//Models
-obj::Model sphereModel;
-obj::Model shipModel;
-
+float frustumScale = 1.f;
+Physics pxScene(9.8);
+const double physicsStepTime = 1.f / 90.0f;
+double physicsTimeToProcess = 0;
+PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr, *earthBody = nullptr, *moonBody = nullptr;
+PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr, *earthMaterial = nullptr, *moonMaterial = nullptr;
+obj::Model sphereModel, shipModel;
 Core::Shader_Loader shaderLoader;
-
-Core::RenderContext sphereContext;
-Core::RenderContext shipContext;
-
+Core::RenderContext sphereContext, shipContext, sunContext;
 float cameraAngle = 0;
-glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
-glm::vec3 cameraDir;
-
+glm::vec3 cameraPos = glm::vec3(-6, 0, 0), cameraDir, lightPos = glm::vec3(0.0f, 0.0f, 0.0f), cameraSide;
 glm::mat4 cameraMatrix, perspectiveMatrix;
+struct Renderable {
+	Core::RenderContext* context;
+    glm::mat4 modelMatrix;
+    GLuint textureId;
+	GLuint textureNormal;
+};
+Renderable *ship, *sun, *earth, *moon, *asteroids, *mars, *venus;
 
-//glm::vec3 lightDir = glm::normalize(glm::vec3(1.0f, -1.0f, -1.0f));
-glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
-
-static const int NUM_ASTEROIDS = 8;
-glm::vec3 asteroidPositions[NUM_ASTEROIDS];
+float horizontalDistance = 6.0f; // CustomCamera variable
+float verticalDistance = 0.8f; // CustomCamera variable
+float angleAroundPlayer; //
+CustomCamera customCamera(cameraPos);
+float fov = 70.0f;
 
 void keyboard(unsigned char key, int x, int y)
 {
-	float angleSpeed = 0.1f;
-	float moveSpeed = 0.1f;
+	float angleSpeed = 1.0f;
+	float moveSpeed = 1.0f;
 	switch (key)
 	{
-	case 'z': cameraAngle -= angleSpeed; break;
-	case 'x': cameraAngle += angleSpeed; break;
-	case 'w': cameraPos += cameraDir * moveSpeed; break;
-	case 's': cameraPos -= cameraDir * moveSpeed; break;
-	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
-	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	case 'z': angleAroundPlayer -= angleSpeed; break;
+	case 'x': angleAroundPlayer += angleSpeed; break;
+	case 'w': shipBody->addForce(PxVec3(cameraDir.x * -50.0f, 0, cameraDir.z * 50.0f), PxForceMode::eFORCE, true); break;
+	case 's': shipBody->addForce(PxVec3(cameraDir.x * 50.0f, 0, cameraDir.z * -50.0f), PxForceMode::eFORCE, true); break;
+	case 'd': shipBody->addForce(PxVec3(cameraSide.x * 25.0f, 0, cameraSide.z * -25.0f), PxForceMode::eFORCE, true); break;
+	case 'a': shipBody->addForce(PxVec3(cameraSide.x * -25.0f, 0, cameraSide.z * 25.0f), PxForceMode::eFORCE, true); break;
+	case 'e': shipBody->addTorque(PxVec3(0, -100.f, 0), PxForceMode::eFORCE, true); break;
+	case 'q': shipBody->addTorque(PxVec3(0, 100.f, 0), PxForceMode::eFORCE, true); break;
+	case ' ': shipBody->setAngularVelocity(PxVec3(0, 0, 0)); break;
 	}
 }
 
-glm::mat4 createCameraMatrix()
-{
-	cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
-	glm::vec3 up = glm::vec3(0, 1, 0);
+void initPhysicsScene(){
+	sunMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	sunBody = pxScene.physics->createRigidDynamic(PxTransform(0,0,0));
+	PxShape *sunShape = pxScene.physics->createShape(PxSphereGeometry(10), *sunMaterial);
+	sunBody->attachShape(*sunShape);
+	sunShape->release();
+	sunBody->setMass(10000);
+	sunBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	sunBody->userData = sun;
+	sunBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*sunBody);
 
-	return Core::createViewMatrix(cameraPos, cameraDir, up);
+	earthMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	earthBody = pxScene.physics->createRigidDynamic(PxTransform(0,0,50));
+	PxShape *earthShape = pxScene.physics->createShape(PxSphereGeometry(10), *earthMaterial);
+	earthBody->attachShape(*earthShape);
+	earthShape->release();
+	earthBody->setMass(1000);
+	earthBody->setAngularVelocity(PxVec3(0 ,1, 0));
+	earthBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	earthBody->userData = earth;
+	earthBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*earthBody);
+
+	moonMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	moonBody = pxScene.physics->createRigidDynamic(PxTransform(50,0,50));
+	PxShape *moonShape = pxScene.physics->createShape(PxSphereGeometry(1), *moonMaterial);
+	moonBody->attachShape(*moonShape);
+	moonShape->release();
+	moonBody->setMass(1000);
+	moonBody->setAngularVelocity(PxVec3(0 ,1, 0));
+	moonBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	moonBody->userData = moon;
+	moonBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*moonBody);
+
+	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 80));
+    shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
+    PxShape* shipShape = pxScene.physics->createShape(PxBoxGeometry(1.25f, 0.3f, 1.25f), *shipMaterial);
+    shipBody->attachShape(*shipShape);
+    shipShape->release();
+    shipBody->setMass(5);
+    shipBody->setMassSpaceInertiaTensor(PxVec3(0.f, 250.0f, 0.f));
+    //spaceshipBody->setRigidDynamicLockFlags(PxRigidDynamicLockFlag::eLOCK_LINEAR_Y | PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z | PxRigidDynamicLockFlag::eLOCK_ANGULAR_X);
+    shipBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+    shipBody->userData = ship;
+
+    pxScene.scene->addActor(*shipBody);
 }
 
-void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatrix, glm::vec3 color)
-{
-	glUseProgram(program);
+void initRenderables(){
+	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
+	textureEarth = Core::LoadTexture("textures/Earth/earth2.png");
+	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
+	textureMoon = Core::LoadTexture("textures/Moon/moon2.png");
+	textureMoonNormal = Core::LoadTexture("textures/Moon/moon_normal.png");
+	textureAsteroid = Core::LoadTexture("textures/Asteroid/asteroid.png");
+	textureAsteroidNormal = Core::LoadTexture("textures/Asteroid/asteroid_normals.png");
+	textureMars = Core::LoadTexture("textures/Planet/mars.png");
+	textureMarsNormal = Core::LoadTexture("textures/Planet/mars_normal.png");;
+	textureVenus = Core::LoadTexture("textures/Planet/venus.png");
+	//textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
 
-	glUniform3f(glGetUniformLocation(program, "objectColor"), color.x, color.y, color.z);
+	shipTextureNormal = Core::LoadTexture("textures/StarSparrow_Normal.png");
+	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
+	
+	sphereModel = obj::loadModelFromFile("models/sphere.obj");
+	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
+	shipContext.initFromOBJ(shipModel);
+	sunContext.initFromOBJ(sphereModel);
 
-	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
-
-	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
-	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
-
-	Core::DrawContext(context);
-	glUseProgram(0);
+	sun = new Renderable();
+	sun->textureId = textureSun;
+	sun->textureNormal = textureEarthNormal;
+	sun->context = &sunContext;
+	
+	earth = new Renderable();
+	earth->textureId = textureEarth;
+	earth->textureNormal = textureEarthNormal;
+	earth->context = &sphereContext;
+	
+	moon = new Renderable();
+	moon->textureId = textureMoon;
+	moon->textureNormal = textureMoonNormal;
+	moon->context = &sphereContext;
+	
+	mars = new Renderable();
+	mars->textureId = textureMars;
+	mars->textureNormal = textureMarsNormal;
+	mars->context = &sphereContext;
+	
+	venus = new Renderable();
+	venus->textureId = textureVenus;
+	venus->textureNormal = textureMarsNormal;
+	venus->context = &sphereContext;
+	
+	ship = new Renderable();
+	ship->textureId = shipTexture;
+	ship->textureNormal = shipTextureNormal;
+	ship->context = &shipContext;
 }
 
-void drawObjectTexture(GLuint program, obj::Model *model, glm::mat4 modelMatrix, GLuint tex, GLuint normalmapId)
-{
-	glUseProgram(program);
+glm::mat4 createCameraMatrix(PxRigidActor* actor, float angleAroundPlayer) {
 
-	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	//glUniform3f(glGetUniformLocation(program, "lightDir"), lightDir.x, lightDir.y, lightDir.z);
-	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
-	glUniformMatrix4fv(glGetUniformLocation(program, "modelViewProjectionMatrix"), 1, GL_FALSE, (float*)&transformation);
-	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
-	Core::SetActiveTexture(tex, "textureSampler", program, 0);
-	Core::SetActiveTexture(normalmapId, "normalSampler", program, 1);
-	Core::DrawModel(model);
-	glUseProgram(0);
+    glm::mat4 cameraMatrix = customCamera.createCustomCameraMatrix(actor, horizontalDistance, verticalDistance, angleAroundPlayer);
+    cameraDir = customCamera.getCameraDir();
+    cameraSide = customCamera.getCameraSide();
+    cameraPos = customCamera.getCameraPos();
+    return cameraMatrix;
+
 }
 
-unsigned int loadCubemap(std::vector<std::string> faces)
+void updateTransforms()
 {
-	unsigned int textureID;
-	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+    // Here we retrieve the current transforms of the objects from the physical simulation.
+    auto actorFlags = PxActorTypeFlag::eRIGID_DYNAMIC | PxActorTypeFlag::eRIGID_STATIC;
+    PxU32 nbActors = pxScene.scene->getNbActors(actorFlags);
+    if (nbActors)
+    {
+        std::vector<PxRigidActor*> actors(nbActors);
+        pxScene.scene->getActors(actorFlags, (PxActor**)&actors[0], nbActors);
+        for (auto actor : actors)
+        {
+            // We use the userData of the objects to set up the model matrices
+            // of proper renderables.
+            if (!actor->userData) continue;
+            Renderable *renderable = (Renderable*)actor->userData;
 
-	int width, height, nrChannels;
-	for (unsigned int i = 0; i < faces.size(); i++)
-	{
-		unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
-		if (data)
-		{
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
-			);
-			stbi_image_free(data);
-		}
-		else
-		{
-			std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
-			stbi_image_free(data);
-		}
-	}
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            // get world matrix of the object (actor)
+            PxMat44 transform = actor->getGlobalPose();
+            auto &c0 = transform.column0;
+            auto &c1 = transform.column1;
+            auto &c2 = transform.column2;
+            auto &c3 = transform.column3;
 
-	return textureID;
+            // set up the model matrix used for the rendering
+            glm::mat4 modelMatrix = glm::mat4(
+                c0.x, c0.y, c0.z, c0.w,
+                c1.x, c1.y, c1.z, c1.w,
+                c2.x, c2.y, c2.z, c2.w,
+                c3.x, c3.y, c3.z, c3.w);
+            
+			if (actor->userData == earth) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
+			if (actor->userData == sun) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
+            if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.2f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
+
+            renderable->modelMatrix = modelMatrix;
+        }
+    }
 }
 
 void renderScene()
 {
-	cameraMatrix = createCameraMatrix();
-	perspectiveMatrix = Core::createPerspectiveMatrix(0.1f, 100.0f, frustumScale);
+	PxU32 nbActors = pxScene.scene->getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC);
+    if (nbActors) {
+        // CAMERA WILL BE ATTACHED TO THE LAST ACTOR ADDED TO THE PHYSX SCENE!
+        std::vector<PxRigidActor*> actors(nbActors);
+        pxScene.scene->getActors(PxActorTypeFlag::eRIGID_DYNAMIC, (PxActor**)&actors[0], nbActors);
+        PxRigidActor* actor = actors.back();
+
+        cameraMatrix = createCameraMatrix(actor, angleAroundPlayer);
+    }
+	perspectiveMatrix = customCamera.createPerspectiveMatrix(0.1f, 10000.f, fov, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
+
+	pxScene.step(physicsStepTime);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
-
-	glUseProgram(program);
-
-	glm::mat4 shipModelMatrix =
-		glm::translate(cameraPos + cameraDir * 0.85f + glm::vec3(0, -0.25f, 0))
-		* glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0))
-		* glm::scale(glm::vec3(0.03f));
 
 	glm::mat4 rotate1, rotate2, rotate3, rotate4, moonRotate;
 	rotate1 = glm::rotate((time / 100.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
@@ -175,72 +258,51 @@ void renderScene()
 	moonRotate = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 1.0f, 0.0f));
 
 	glm::mat4 moonScale, sunScale, planetScale1, planetScale2, planetScale3;
-	moonScale = glm::scale(glm::vec3(0.3, 0.3, 0.3));
+	moonScale = glm::scale(glm::vec3(15, 15, 15));
 	sunScale = glm::scale(glm::vec3(1.5, 1.5, 1.5));
 	planetScale1 = glm::scale(glm::vec3(0.8, 0.8, 0.8));
-	planetScale2 = glm::scale(glm::vec3(1.2, 1.2, 1.2));
+	planetScale2 = glm::scale(glm::vec3(50.0, 50.0, 50.0));
 	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
 
+	updateTransforms();
+
+	glm::mat4 earthPos = rotate3 * planetScale2;
+	glm::mat4 moonPos = moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) * moonScale;
+
+	std::cout << moonPos[0].x << " " << moonPos[0].y << " " << moonPos[0].z << '\n';
+	earthBody->setGlobalPose(PxTransform(earthPos[0].x, earthPos[0].y, earthPos[0].z));
+	moonBody->setGlobalPose(PxTransform(earthPos[0].x + moonPos[0].x, earthPos[0].y + moonPos[0].y, earthPos[0].z + moonPos[0].z));
+	//earth->modelMatrix = rotate3 * glm::translate(glm::vec3(0, 0, 20)) * rotate4;
+	//moon->modelMatrix =  rotate3 * glm::translate(glm::vec3(0, 0, 20)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) * moonScale;
+	mars->modelMatrix = rotate2 * glm::translate(glm::vec3(0, 0, 25)) * planetScale1 * rotate4;
+	venus->modelMatrix = rotate1 * glm::translate(glm::vec3(0, 0, -10)) * planetScale3 * rotate4;
+
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
-
-	drawObjectTexture(programTexture, &sphereModel, rotate1 * glm::translate(glm::vec3(0, 0, -10)) * planetScale3 * rotate4, textureVenus, textureMarsNormal);
-	drawObjectTexture(programTexture, &sphereModel, rotate2 * glm::translate(glm::vec3(0, 0, 25)) * planetScale1 * rotate4, textureMars, textureMarsNormal);
-	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 20)) * planetScale2 * rotate4, textureEarth, textureEarthNormal);
-	drawObjectTexture(programTexture, &sphereModel, rotate3 * glm::translate(glm::vec3(0, 0, 20)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) *
-		moonScale, textureMoon, textureMarsNormal);
-	drawObjectTexture(programSun, &sphereModel,glm::translate(glm::vec3(0,0,0)), textureSun, textureMarsNormal);
-
-	for (int i = 0; i < NUM_ASTEROIDS; i++) {
-		drawObjectTexture(programTexture, &sphereModel, glm::translate(asteroidPositions[i]) * glm::scale(glm::vec3(0.2f)), textureAsteroid,textureAsteroidNormal);
-	}
-
-
-	drawObjectTexture(programTexture, &shipModel, shipModelMatrix, shipTexture, shipTextureNormal);
-
+	
+	Core::drawObjectTextureSun(programSun, &sphereModel, sun->modelMatrix, sun->textureId, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, earth->modelMatrix, earth->textureId, earth->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, moon->modelMatrix, moon->textureId, moon->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, mars->modelMatrix, mars->textureId, mars->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &sphereModel, venus->modelMatrix, venus->textureId, venus->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	//Core::drawObjectTexture(programTexture, &sphereModel, asteroids->modelMatrix, asteroids->textureId, asteroids->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
+	Core::drawObjectTexture(programTexture, &shipModel, ship->modelMatrix, ship->textureId, ship->textureNormal, cameraMatrix, perspectiveMatrix, cameraPos, lightPos);
 	glutSwapBuffers();
 }
-
 
 void init()
 {
 	glEnable(GL_DEPTH_TEST);
-	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_sun_tex.vert", "shaders/shader_sun_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_texture.vert", "shaders/shader_texture.frag");
 
-	textureEarth = Core::LoadTexture("textures/Earth/earth2.png");
-	textureSun = Core::LoadTexture("textures/Sun/sunTex.png");
-	textureMoon = Core::LoadTexture("textures/Moon/moon2.png");
-	textureAsteroid = Core::LoadTexture("textures/Asteroid/asteroid.png");
-	textureMars = Core::LoadTexture("textures/Planet/mars.png");
-	textureVenus = Core::LoadTexture("textures/Planet/venus.png");
-
-	//textureVenusNormal = Core::LoadTexture("textures/Planet/venus_normal.png");
-	textureEarthNormal = Core::LoadTexture("textures/Earth/earth2_normals.png");
-	textureAsteroidNormal = Core::LoadTexture("textures/Asteroid/asteroid_normals.png");
-	textureSunNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
-	textureMoonNormal = Core::LoadTexture("textures/Moon/moon_normal.png");;
-	textureMarsNormal = Core::LoadTexture("textures/Planet/mars_normal.png");;
-	shipTextureNormal = Core::LoadTexture("textures/StarSparrow_Normal.png");
-
-	sphereModel = obj::loadModelFromFile("models/sphere.obj");
-	shipModel = obj::loadModelFromFile("models/StarSparrow02.obj");
-
-	shipTexture = Core::LoadTexture("textures/StarSparrow_Blue.png");
-
-	static const float astRadius = 6.0;
-	for (int i = 0; i < NUM_ASTEROIDS; i++) {
-		float angle = (float(i) * (2 * glm::pi<float>() / NUM_ASTEROIDS));
-		asteroidPositions[i] = glm::vec3(cosf(angle), 0.0f, sinf(angle)) * astRadius + glm::sphericalRand(0.5f);
-	}
-
+	initRenderables();
+	initPhysicsScene();
 	initSkybox();
 }
 
 void shutdown()
 {
-	shaderLoader.DeleteProgram(program);
 	shaderLoader.DeleteProgram(programSun);
 	shaderLoader.DeleteProgram(programSkybox);
 	shaderLoader.DeleteProgram(programTexture);
@@ -262,8 +324,8 @@ int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowPosition(200, 200);
-	glutInitWindowSize(1600, 900);
+	glutInitWindowPosition(0, 0);
+	glutInitWindowSize(2560, 1440);
 	glutCreateWindow("OpenGL Pierwszy Program");
 	glewInit();
 
