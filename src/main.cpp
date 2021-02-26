@@ -42,8 +42,8 @@ float frustumScale = 1.f;
 Physics pxScene(9.8);
 const double physicsStepTime = 1.f / 90.0f;
 double physicsTimeToProcess = 0;
-PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr, *earthBody = nullptr, *moonBody = nullptr;
-PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr, *earthMaterial = nullptr, *moonMaterial = nullptr;
+PxRigidDynamic *shipBody = nullptr, *sunBody = nullptr, *earthBody = nullptr, *moonBody = nullptr, *marsBody = nullptr, *venusBody = nullptr;
+PxMaterial* shipMaterial = nullptr, *sunMaterial = nullptr, *earthMaterial = nullptr, *moonMaterial = nullptr, *marsMaterial = nullptr, *venusMaterial = nullptr;
 obj::Model sphereModel, shipModel;
 Core::Shader_Loader shaderLoader;
 Core::RenderContext sphereContext, shipContext, sunContext;
@@ -128,6 +128,30 @@ void initPhysicsScene(){
 	moonBody->userData = moon;
 	moonBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
 	pxScene.scene->addActor(*moonBody);
+
+	marsMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	marsBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 100));
+	PxShape* marsShape = pxScene.physics->createShape(PxSphereGeometry(10), *marsMaterial);
+	marsBody->attachShape(*marsShape);
+	marsShape->release();
+	marsBody->setMass(1000);
+	marsBody->setAngularVelocity(PxVec3(0, 1, 0));
+	marsBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	marsBody->userData = mars;
+	marsBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*marsBody);
+
+	venusMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
+	venusBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 100));
+	PxShape* venusShape = pxScene.physics->createShape(PxSphereGeometry(10), *venusMaterial);
+	venusBody->attachShape(*venusShape);
+	venusShape->release();
+	venusBody->setAngularVelocity(PxVec3(0, 1, 0));
+	venusBody->setMass(1000);
+	venusBody->setMassSpaceInertiaTensor(PxVec3(2000.0f, 2000.0f, 2000.0f));
+	venusBody->userData = venus;
+	venusBody->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+	pxScene.scene->addActor(*venusBody);
 
 	shipBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 80));
     shipMaterial = pxScene.physics->createMaterial(0.82f, 0.8f, 0.f);
@@ -236,8 +260,10 @@ void updateTransforms()
                 c3.x, c3.y, c3.z, c3.w);
             
 			if (actor->userData == earth) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
-			if (actor->userData == sun) modelMatrix = modelMatrix * glm::scale(glm::vec3(10.0f));
-            if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.2f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
+			if (actor->userData == sun) modelMatrix = modelMatrix * glm::scale(glm::vec3(20.0f));
+            if (actor->userData == ship) modelMatrix = modelMatrix * glm::scale(glm::vec3(0.1f)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 1, 0)); // IMPORTANT!
+			if (actor->userData == mars) modelMatrix = modelMatrix * glm::scale(glm::vec3(15.f));
+			if (actor->userData == venus) modelMatrix = modelMatrix * glm::scale(glm::vec3(7.f));
 
             renderable->modelMatrix = modelMatrix;
         }
@@ -273,22 +299,26 @@ void renderScene()
 	glm::mat4 moonScale, sunScale, planetScale1, planetScale2, planetScale3;
 	moonScale = glm::scale(glm::vec3(15, 15, 15));
 	sunScale = glm::scale(glm::vec3(1.5, 1.5, 1.5));
-	planetScale1 = glm::scale(glm::vec3(0.8, 0.8, 0.8));
+	planetScale1 = glm::scale(glm::vec3(60.0, 60.0, 60.0));
 	planetScale2 = glm::scale(glm::vec3(50.0, 50.0, 50.0));
-	planetScale3 = glm::scale(glm::vec3(1.0, 1.0, 1.0));
+	planetScale3 = glm::scale(glm::vec3(25., 25., 25.));
 
 	updateTransforms();
 
 	glm::mat4 earthPos = rotate3 * planetScale2;
 	glm::mat4 moonPos = moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) * moonScale;
+	glm::mat4 marsPos = rotate1 * planetScale1;
+	glm::mat4 venusPos = rotate2 * planetScale3;
 
 	std::cout << moonPos[0].x << " " << moonPos[0].y << " " << moonPos[0].z << '\n';
 	earthBody->setGlobalPose(PxTransform(earthPos[0].x, earthPos[0].y, earthPos[0].z));
 	moonBody->setGlobalPose(PxTransform(earthPos[0].x + moonPos[0].x, earthPos[0].y + moonPos[0].y, earthPos[0].z + moonPos[0].z));
+	marsBody->setGlobalPose(PxTransform(marsPos[0].x, marsPos[0].y, marsPos[0].z));
+	venusBody->setGlobalPose(PxTransform(venusPos[0].x, venusPos[0].y, venusPos[0].z));
 	//earth->modelMatrix = rotate3 * glm::translate(glm::vec3(0, 0, 20)) * rotate4;
 	//moon->modelMatrix =  rotate3 * glm::translate(glm::vec3(0, 0, 20)) * moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) * moonScale;
-	mars->modelMatrix = rotate2 * glm::translate(glm::vec3(0, 0, 25)) * planetScale1 * rotate4;
-	venus->modelMatrix = rotate1 * glm::translate(glm::vec3(0, 0, -10)) * planetScale3 * rotate4;
+	//mars->modelMatrix = rotate2 * glm::translate(glm::vec3(0, 0, 25)) * planetScale1 * rotate4;
+	//venus->modelMatrix = rotate1 * glm::translate(glm::vec3(0, 0, -10)) * planetScale3 * rotate4;
 
 	renderSkybox(programSkybox, cameraMatrix, perspectiveMatrix);
 	
