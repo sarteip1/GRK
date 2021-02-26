@@ -305,7 +305,7 @@ void renderScene()
 
 	updateTransforms();
 
-	glm::mat4 earthPos = rotate3 * planetScale2 * rotate4;
+	glm::mat4 earthPos = rotate3 * planetScale2;
 	glm::mat4 moonPos = moonRotate * glm::translate(glm::vec3(0.25, 0.5, 1.5)) * moonScale;
 	glm::mat4 marsPos = rotate1 * planetScale1;
 	glm::mat4 venusPos = rotate2 * planetScale3;
