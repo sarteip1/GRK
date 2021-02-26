@@ -96,7 +96,7 @@ void keyboard(unsigned char key, int x, int y)
 void initPhysicsScene(){
 	sunMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
 	sunBody = pxScene.physics->createRigidDynamic(PxTransform(0,0,0));
-	PxShape *sunShape = pxScene.physics->createShape(PxSphereGeometry(10), *sunMaterial);
+	PxShape *sunShape = pxScene.physics->createShape(PxSphereGeometry(20), *sunMaterial);
 	sunBody->attachShape(*sunShape);
 	sunShape->release();
 	sunBody->setMass(10000);
@@ -131,7 +131,7 @@ void initPhysicsScene(){
 
 	marsMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
 	marsBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 100));
-	PxShape* marsShape = pxScene.physics->createShape(PxSphereGeometry(10), *marsMaterial);
+	PxShape* marsShape = pxScene.physics->createShape(PxSphereGeometry(15), *marsMaterial);
 	marsBody->attachShape(*marsShape);
 	marsShape->release();
 	marsBody->setMass(1000);
@@ -143,7 +143,7 @@ void initPhysicsScene(){
 
 	venusMaterial = pxScene.physics->createMaterial(0.9f, 0.8f, 0.7f);
 	venusBody = pxScene.physics->createRigidDynamic(PxTransform(0, 0, 100));
-	PxShape* venusShape = pxScene.physics->createShape(PxSphereGeometry(10), *venusMaterial);
+	PxShape* venusShape = pxScene.physics->createShape(PxSphereGeometry(7), *venusMaterial);
 	venusBody->attachShape(*venusShape);
 	venusShape->release();
 	venusBody->setAngularVelocity(PxVec3(0, 1, 0));
@@ -289,19 +289,24 @@ void renderScene()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 
+	earthBody->setAngularVelocity(PxVec3(0 ,1, 0));
+	moonBody->setAngularVelocity(PxVec3(0 ,1, 0));
+	marsBody->setAngularVelocity(PxVec3(0 ,1, 0));
+	venusBody->setAngularVelocity(PxVec3(0 ,1, 0));
+
 	glm::mat4 rotate1, rotate2, rotate3, rotate4, moonRotate;
-	rotate1 = glm::rotate((time / 100.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
-	rotate2 = glm::rotate((time / 120.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
-	rotate3 = glm::rotate((time / 150.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate1 = glm::rotate((time / 360.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate2 = glm::rotate((time / 300.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
+	rotate3 = glm::rotate((time / 240.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
 	rotate4 = glm::rotate((time / 6.0f) * 2 * 3.14159f, glm::vec3(0.0f, 2.0f, 0.0f));
 	moonRotate = glm::rotate((time / 15.0f) * 2 * 3.14159f, glm::vec3(0.0f, 1.0f, 0.0f));
 
 	glm::mat4 moonScale, sunScale, planetScale1, planetScale2, planetScale3;
 	moonScale = glm::scale(glm::vec3(15, 15, 15));
 	sunScale = glm::scale(glm::vec3(1.5, 1.5, 1.5));
-	planetScale1 = glm::scale(glm::vec3(60.0, 60.0, 60.0));
-	planetScale2 = glm::scale(glm::vec3(50.0, 50.0, 50.0));
-	planetScale3 = glm::scale(glm::vec3(25., 25., 25.));
+	planetScale1 = glm::scale(glm::vec3(500, 500, 500));
+	planetScale2 = glm::scale(glm::vec3(300, 300, 300));
+	planetScale3 = glm::scale(glm::vec3(100, 100, 100));
 
 	updateTransforms();
 
