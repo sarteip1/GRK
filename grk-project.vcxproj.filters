@@ -48,6 +48,8 @@
     <None Include="shaders\shader_sun_tex.frag">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shaders\shader_particle.vert" />
+    <None Include="shaders\shader_particle.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Box.cpp">
