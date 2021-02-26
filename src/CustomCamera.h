@@ -25,4 +25,6 @@ public:
 
     glm::vec3 getCameraSide();
 
+    glm::mat4 createViewMatrixLookAt(glm::vec3 position, glm::vec3 forward, glm::vec3 up);
+
 };

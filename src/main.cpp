@@ -26,6 +26,8 @@
 #include "Physics.h"
 #include "Texture.h"
 #include "CustomCamera.h"
+#include "CustomMouseController.h"
+
 
 GLuint program, programSun, programSkybox, programColor, programTexture;
 GLuint textureEarth, textureEarthNormal;
@@ -60,8 +62,19 @@ float horizontalDistance = 6.0f; // CustomCamera variable
 float verticalDistance = 0.8f; // CustomCamera variable
 float angleAroundPlayer; //
 CustomCamera customCamera(cameraPos);
+CustomMouseController customMouse(horizontalDistance, angleAroundPlayer);
 float fov = 70.0f;
 
+void mouse(int x, int y) {
+	customMouse.mouseController(x, y);
+	angleAroundPlayer = customMouse.getAngleAroundPlayer();
+}
+
+void mouseKeyController(int button, int state, int x, int y) {
+	customMouse.mouseKeyController(button, state, x, y);
+	angleAroundPlayer = customMouse.getAngleAroundPlayer();
+	horizontalDistance = customMouse.getHorizontalDistance();
+}
 void keyboard(unsigned char key, int x, int y)
 {
 	float angleSpeed = 1.0f;
@@ -331,6 +344,10 @@ int main(int argc, char** argv)
 
 	init();
 	glutKeyboardFunc(keyboard);
+
+	glutMouseFunc(mouseKeyController);
+	glutMotionFunc(mouse);
+
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
 	glutReshapeFunc(onReshape);
